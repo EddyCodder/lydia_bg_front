@@ -1,8 +1,12 @@
-# chatwoot_brittanygroup
+@AGENTS.md
+
+---
+
+# chatwoot_brittanygroup — notas de Brittany Group
 
 Fork propio de [chatwoot/chatwoot](https://github.com/chatwoot/chatwoot) (CRM-8, 2026-09-15). Reemplaza a la imagen `chatwoot/chatwoot:latest` de Docker Hub que usa `CRM_brittanygroup/docker-compose.yml` — ese cambio (buildear desde este fork en vez de pullear la imagen oficial) todavía no está hecho.
 
-Ver `CRM_brittanygroup/CLAUDE.md` para el contexto completo del proyecto CRM (Chatwoot + Evolution API + Lydia).
+Ver `CRM_brittanygroup/CLAUDE.md` para el contexto completo del proyecto CRM (Chatwoot + Evolution API + Lydia). Para comandos de desarrollo/build/test propios de Chatwoot, ver `AGENTS.md` arriba (documentación original del proyecto, no tocada).
 
 ## Remotos
 
