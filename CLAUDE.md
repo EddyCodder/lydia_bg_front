@@ -1,25 +1,23 @@
-@AGENTS.md
+# lydia_bg_front
 
----
+Frontend de Lydia (CRM WhatsApp de Brittany Group): Next.js/TypeScript/Tailwind v4 — bandeja de conversaciones, pipeline de leads, calendario, automatizaciones e insights. Consume la API de `lydia_bg_back` (Evolution API, fork propio).
 
-# lydia_bg_front — notas de Brittany Group
+## Historia (CRM-11)
 
-Fork propio de [chatwoot/chatwoot](https://github.com/chatwoot/chatwoot) (CRM-8, 2026-09-15; carpeta y repo renombrados el mismo día de `chatwoot_brittanygroup` a `lydia_bg_front`). Reemplaza a la imagen `chatwoot/chatwoot:latest` de Docker Hub que usa `CRM_brittanygroup/docker-compose.yml` — ese cambio (buildear desde este fork en vez de pullear la imagen oficial) todavía no está hecho.
+Hasta el 2026-09-16 este repo era un fork de [chatwoot/chatwoot](https://github.com/chatwoot/chatwoot) (Ruby on Rails), usado como bandeja compartida multi-agente. Se descartó: su build de Docker tardaba 20+ minutos por la gema `grpc` (integración con Dialogflow, sin uso real), y el proyecto ya tenía un frontend propio (Next.js, hecho en `CRM_brittanygroup/frontend/`, tickets CRM-7/8/9) más avanzado en UX que la bandeja de Chatwoot. Se decidió migrar lo útil de Chatwoot a ese frontend propio en vez de seguir cargando con todo Chatwoot, y ese frontend pasó a vivir en este repo (reemplazando el código de Chatwoot). El historial de Chatwoot queda en el `git log` de este repo por si hace falta consultar algo puntual.
 
-**Ojo con el nombre**: pese a "front", esto es el fork de Chatwoot (Ruby on Rails, con su propia UI Vue embebida) — no es un frontend Next.js. El front real de Lydia (lo que ven las asesoras en el navegador) está en `CRM_brittanygroup/frontend/`.
+`CRM_brittanygroup` (el repo donde vivía este frontend) se eliminó por completo — no tenía nada más relevante para Brittany (el resto era CRM_lab, un proyecto sin relación, que ya vive aparte).
 
-Ver `CRM_brittanygroup/CLAUDE.md` para el contexto completo del proyecto CRM (Chatwoot + Evolution API + Lydia). Para comandos de desarrollo/build/test propios de Chatwoot, ver `AGENTS.md` arriba (documentación original del proyecto, no tocada).
+## Estado de la conexión a datos (CRM-9, CRM-11, CRM-12)
 
-## Remotos
+- El inbox (`src/lib/chatwoot/`) todavía habla el protocolo de la Application API de Chatwoot, apagado por defecto (`NEXT_PUBLIC_CHATWOOT_ENABLED=false` en `.env.example` — sin eso, cae a datos de ejemplo en vez de romperse). Esto es intencional por ahora: **CRM-11 solo movió el código, no reemplazó las llamadas** — sirve para no bloquear el deploy mientras se construye el backend real.
+- Pipelines, leads, calendario, automatizaciones e insights siguen sobre `src/lib/mock-data.ts`, sin persistencia real.
+- **CRM-12** (siguiente paso, backlog): construir en `lydia_bg_back` los endpoints que hoy daría Chatwoot (conversaciones, asignación de agente, notas internas, estado leído/labels) y apuntar `src/lib/chatwoot/` ahí en vez de a una instancia de Chatwoot. Evaluar entonces si conviene renombrar esa carpeta.
 
-- `origin` → `EddyCodder/lydia_bg_front` (el fork, donde se pushea).
-- `upstream` → `chatwoot/chatwoot` (el oficial, para traer actualizaciones: `git fetch upstream` + merge/rebase).
+## Despliegue
 
-## ⚠️ Licencia — leer antes de tocar código
-
-- El core es **MIT**.
-- El directorio **`enterprise/`** tiene su propia licencia (Chatwoot Enterprise): exige una suscripción paga de Chatwoot para uso en producción. **No activar ni depender de nada de `enterprise/`** sin confirmar que hay una suscripción vigente.
+VPS de Brittany (`144.91.113.27`), Docker, dominio `crm.brittanygroup.edu.pe`. El `docker-compose.yml` de la stack completa (frontend + Evolution API + Postgres + Redis) vive en `lydia_bg_back/deploy/lydia-prod/` (ver ese `DEPLOYMENT.md`) — este repo solo aporta su propio `Dockerfile` y el workflow de CI (`.github/workflows/deploy.yml`, solo `main`, sin selector de entorno).
 
 ## Flujo
 
-Igual que el resto del ecosistema Brittany: ningún cambio de código sin ticket `CRM-` primero (ver `docs_ragnargroup/flujo_desarrollo.md` y el `CLAUDE.md` del workspace).
+Igual que el resto del ecosistema Brittany: ningún cambio de código sin ticket `CRM-` primero.

@@ -1,6 +1,6 @@
 name: Despliegue a Producción (VPS Brittany — Lydia)
 
-# Solo production por ahora (CRM-10): no existe todavia un entorno de
+# Solo production por ahora (CRM-10/CRM-11): no existe todavia un entorno de
 # desarrollo para Lydia, asi que a diferencia del resto del ecosistema esto
 # no "cae a development" para cualquier otra rama -- simplemente rechaza
 # cualquier rama que no sea main. El entorno nunca se elige a mano.
@@ -10,7 +10,7 @@ on:
 
 jobs:
   deploy:
-    name: Desplegar Chatwoot (lydia_bg_front) en VPS
+    name: Desplegar frontend (lydia_bg_front) en VPS
     runs-on: ubuntu-latest
 
     steps:
@@ -24,10 +24,9 @@ jobs:
       - name: 📥 Descargar código
         uses: actions/checkout@v4
 
-      # No se compila nada en el runner: el build de la imagen (bundle
-      # install + assets de Vue/Vite) corre dentro del Dockerfile, en el
-      # propio VPS, para no necesitar registry. rsync sube el codigo fuente
-      # tal cual.
+      # No se compila nada en el runner: el build de Next.js corre dentro
+      # del Dockerfile, en el propio VPS, para no necesitar registry. rsync
+      # sube el codigo fuente tal cual.
       - name: 🔑 Preparar clave SSH (VPS)
         run: |
           install -m 600 /dev/null /tmp/deploy_key
@@ -40,8 +39,7 @@ jobs:
           rsync -avz --delete \
             --exclude='.git/' \
             --exclude='node_modules/' \
-            --exclude='tmp/' \
-            --exclude='public/packs/' \
+            --exclude='.next/' \
             -e "ssh -i /tmp/deploy_key -o StrictHostKeyChecking=yes" \
             ./ \
             ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/lydia_prod/front/
@@ -52,25 +50,21 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          # Timeout largo: bundle install + compilar assets de Chatwoot desde
-          # cero puede tardar varios minutos, muy por encima del default.
-          command_timeout: 20m
           script: |
             set -euo pipefail
 
-            # Unico paso que necesita root (build + reinicio de web y
-            # worker + migraciones): va por una regla de sudo acotada a este
-            # comando exacto, mismo patron que deploy-reload-<proyecto>-prod
-            # en el resto del VPS.
+            # Unico paso que necesita root (build + reinicio del contenedor):
+            # va por una regla de sudo acotada a este comando exacto, mismo
+            # patron que deploy-reload-<proyecto>-prod en el resto del VPS.
             sudo -n /usr/local/sbin/deploy-reload-lydia-front
 
-            echo "Esperando a que Chatwoot responda en 127.0.0.1:3009 ..."
+            echo "Esperando a que el frontend responda en 127.0.0.1:3009 ..."
             for i in $(seq 1 30); do
               CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 "http://127.0.0.1:3009/" || true)
               if [ "$CODE" != "000" ]; then echo "Arrancado correctamente (HTTP $CODE)"; exit 0; fi
               sleep 4
             done
-            echo "ERROR: Chatwoot no respondio en 120 segundos. Revisar: docker logs lydia_chatwoot_web"
+            echo "ERROR: el frontend no respondio en 120 segundos. Revisar: docker logs lydia_frontend"
             exit 1
 
       - name: 🧹 Limpiar clave SSH temporal
