@@ -1,0 +1,76 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans:
+    "Plus Jakarta Sans", var(--font-geist-sans), system-ui, sans-serif;
+
+  /* Paleta oficial de Brittany Group (verificada contra sga_brittany_front
+     y academico_brittanygroup_front: azul + naranja son consistentes en
+     los dos productos). */
+  --color-brand: #235bcc;
+  --color-brand-dark: #1b47a0;
+  --color-accent: #ff8e15;
+  --color-accent-dark: #c96a00;
+
+  --color-ink: #0f172a;
+  --color-ink-soft: #5a6577;
+  --color-muted: #7a8494;
+  --color-muted-2: #96a0b0;
+
+  --color-line: #e1e6ef;
+  --color-line-soft: #e9edf4;
+
+  --color-surface: #ffffff;
+  --color-bg: #edeff3;
+  --color-bg-subtle: #f7f9fc;
+
+  --color-success: #15803d;
+  --color-danger: #dc2626;
+
+  /* Misma escala de radios que el Portal Académico, para que Lydia se
+     sienta parte de la misma familia de productos. */
+  --radius-sm: 5px;
+  --radius-md: 8px;
+  --radius-lg: 11px;
+  --radius-xl: 14px;
+
+  --text-2xs: 10px;
+
+  --spacing-card-x: 22px;
+  --spacing-card-y: 20px;
+}
+
+@layer base {
+  body {
+    background: var(--color-bg);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a {
+    color: var(--color-brand);
+    text-decoration: none;
+  }
+}
+
+@utility scroll-slim {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-muted-2) transparent;
+
+  &::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background-color: var(--color-muted-2);
+    background-clip: content-box;
+    border: 2px solid transparent;
+    border-radius: 9999px;
+  }
+}
