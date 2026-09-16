@@ -86,8 +86,11 @@ RUN if [ "$RAILS_ENV" = "production" ]; then \
   && rm -rf spec node_modules tmp/cache; \
   fi
 
-# Generate .git_sha file with current commit hash
-RUN git rev-parse HEAD > /app/.git_sha
+# Generate .git_sha file with current commit hash. Falls back to "unknown"
+# when .git isn't in the build context (Brittany's deploy workflow excludes
+# it from the rsync on purpose, CRM-10) -- upstream CI still gets the real
+# SHA since it builds with .git present.
+RUN git rev-parse HEAD > /app/.git_sha 2>/dev/null || echo "unknown" > /app/.git_sha
 
 # Remove unnecessary files
 RUN rm -rf /gems/ruby/3.4.0/cache/*.gem \
