@@ -1,19 +1,24 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { templateGroups } from "@/lib/mock-data";
+import { templateGroups as mockTemplateGroups } from "@/lib/mock-data";
+import { LYDIA_API_ENABLED } from "@/lib/lydia-api/config";
+import { useTemplateGroups } from "@/lib/queries/template-groups";
 
 interface Props {
   onSend: (text: string) => void;
   disabled?: boolean;
 }
 
-const allTemplates = templateGroups.flatMap((group) => group.templates);
-
 export function Composer({ onSend, disabled = false }: Props) {
   const [value, setValue] = useState("");
   const [highlighted, setHighlighted] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const { data: realGroups = [], error: groupsError } = useTemplateGroups();
+  const isMockMode = !LYDIA_API_ENABLED || groupsError !== null;
+  const templateGroups = isMockMode ? mockTemplateGroups : realGroups;
+  const allTemplates = useMemo(() => templateGroups.flatMap((group) => group.templates), [templateGroups]);
 
   const isSlashMode = value.startsWith("/");
   const query = isSlashMode ? value.slice(1).toLowerCase() : "";
@@ -24,7 +29,7 @@ export function Composer({ onSend, disabled = false }: Props) {
             (t) => t.label.toLowerCase().includes(query) || t.command.toLowerCase().includes(query),
           )
         : [],
-    [isSlashMode, query],
+    [isSlashMode, query, allTemplates],
   );
 
   const handleSend = () => {

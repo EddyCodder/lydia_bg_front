@@ -91,6 +91,9 @@ export interface CalendarEvent {
   startAt: string; // ISO
   endAt: string; // ISO
   note: string;
+  // LYD-9: solo aplica a type "tarea" -- distingue pendiente de resuelta.
+  // Opcional/default false para no romper los mocks existentes que no lo seteaban.
+  completed?: boolean;
 }
 
 export interface ChatTemplate {

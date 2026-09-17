@@ -1,5 +1,14 @@
-import type { EvoAgent, EvoConversation, EvoMessage } from "./types";
+import type {
+  EvoAgent,
+  EvoCalendarEvent,
+  EvoConversation,
+  EvoLead,
+  EvoMessage,
+  EvoPersonalInsights,
+  EvoTemplateGroup,
+} from "./types";
 import type { InboxAgent, InboxContact, InboxConversation, InboxMessage } from "./inbox-types";
+import type { CalendarEvent, Lead, TemplateGroup } from "@/lib/types";
 
 function jidToPhone(remoteJid: string): string {
   return remoteJid.split("@")[0] ?? remoteJid;
@@ -53,6 +62,57 @@ function deriveStatus(conversation: EvoConversation): InboxConversation["status"
   if (conversation.status === "resolved") return "cerrado";
   if (conversation.status === "open" && conversation.unreadMessages > 0) return "sin_respuesta";
   return "abierto";
+}
+
+// LYD-8: el back linkea Lead -> Chat (lead.chatId), al reves de como el mock
+// del frontend linkea Conversation -> Lead (conversation.leadId). Este
+// adapter expone el shape del frontend (Lead sin conversationId propio, la
+// UI de pipeline no necesita el link inverso).
+export function adaptLead(lead: EvoLead): Lead {
+  return {
+    id: lead.id,
+    code: lead.leadNumber,
+    leadNumber: lead.leadNumber,
+    contactName: lead.contactName,
+    company: lead.company ?? undefined,
+    phone: lead.phone ?? undefined,
+    email: lead.email ?? undefined,
+    position: lead.position ?? undefined,
+    source: lead.source,
+    budget: lead.budget ?? undefined,
+    budgetAmount: Number(lead.budgetAmount),
+    stage: lead.stage,
+    assignedAgentId: lead.assignedAgentId,
+    createdAt: lead.createdAt,
+    hasPendingTasks: lead.hasPendingTasks,
+  };
+}
+
+export function adaptCalendarEvent(event: EvoCalendarEvent): CalendarEvent {
+  return {
+    id: event.id,
+    type: event.type,
+    leadId: event.leadId ?? undefined,
+    agentId: event.agentId,
+    startAt: event.startAt,
+    endAt: event.endAt,
+    note: event.note,
+    completed: event.completed,
+  };
+}
+
+export function adaptTemplateGroup(group: EvoTemplateGroup): TemplateGroup {
+  return {
+    id: group.id,
+    title: group.title,
+    templates: group.Templates.map((t) => ({ command: t.command, label: t.label, body: t.body })),
+  };
+}
+
+// Pass-through casi directo -- el shape de EvoPersonalInsights ya se disenio
+// igual al que espera PersonalDashboard.tsx (ver LYD-11).
+export function adaptPersonalInsights(insights: EvoPersonalInsights): EvoPersonalInsights {
+  return insights;
 }
 
 export function adaptConversation(conversation: EvoConversation): InboxConversation {

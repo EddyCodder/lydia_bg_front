@@ -4,21 +4,36 @@ import { useMemo, useState } from "react";
 import {
   getLeadsByStage,
   incomingRequests,
-  leads as initialLeads,
+  leads as mockLeads,
   pipelineStages,
   sumBudget,
 } from "@/lib/mock-data";
 import type { Lead, PipelineStageId } from "@/lib/types";
 import { formatCurrency, formatNumber } from "@/lib/format";
+import { LYDIA_API_ENABLED } from "@/lib/lydia-api/config";
+import { useCreateLead, useLeads } from "@/lib/queries/leads";
+import { useAuth } from "@/components/providers/AuthProvider";
 import { PipelineColumn } from "./PipelineColumn";
 import { LeadCard } from "./LeadCard";
 import { IncomingRequestCard } from "./IncomingRequestCard";
 import { NewLeadModal } from "./NewLeadModal";
 
-const CURRENT_AGENT_ID = "mafer";
+const MOCK_AGENT_ID = "mafer";
 
 export function PipelineBoard() {
-  const [leadList, setLeadList] = useState<Lead[]>(initialLeads);
+  const { data: realLeads = [], error: leadsError } = useLeads();
+  const isMockMode = !LYDIA_API_ENABLED || leadsError !== null;
+  const createLead = useCreateLead();
+  const { agent } = useAuth();
+  // LYD-2: en modo mock seguimos filtrando contra el agente de ejemplo
+  // (los datos de mock-data.ts usan ids tipo "mafer"); en modo real es el
+  // agente de la sesion (Agent.id real de lydia_bg_back).
+  const CURRENT_AGENT_ID = isMockMode ? MOCK_AGENT_ID : (agent?.id ?? "");
+
+  // Modo mock: estado local editable (como antes de LYD-8). Modo real: la
+  // lista viene de React Query, editar es via mutacion, no via setState.
+  const [mockLeadList, setMockLeadList] = useState<Lead[]>(mockLeads);
+  const leadList = isMockMode ? mockLeadList : realLeads;
   const [search, setSearch] = useState("");
   const [onlyMine, setOnlyMine] = useState(false);
   const [filterMenuOpen, setFilterMenuOpen] = useState(false);
@@ -51,6 +66,19 @@ export function PipelineBoard() {
     budgetAmount: number;
     stage: PipelineStageId;
   }) => {
+    if (!isMockMode) {
+      createLead.mutate({
+        contactName: data.contactName,
+        phone: data.phone,
+        source: data.source,
+        budgetAmount: data.budgetAmount,
+        stage: data.stage,
+        assignedAgentId: CURRENT_AGENT_ID,
+      });
+      setModalStage(null);
+      return;
+    }
+
     const newLead: Lead = {
       id: `lead-local-${Date.now()}`,
       code: `AS${Math.floor(100 + Math.random() * 900)}`,
@@ -64,7 +92,7 @@ export function PipelineBoard() {
       createdAt: new Date().toISOString(),
       hasPendingTasks: false,
     };
-    setLeadList((prev) => [newLead, ...prev]);
+    setMockLeadList((prev) => [newLead, ...prev]);
     setModalStage(null);
   };
 

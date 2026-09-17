@@ -4,6 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAuth } from "@/components/providers/AuthProvider";
 import { Icon, type IconName } from "./icons";
 
 type NavLeaf = { type: "leaf"; label: string; href: string; icon: IconName };
@@ -96,6 +97,7 @@ function CollapsedItem({
 
 export function NavRail() {
   const pathname = usePathname();
+  const { agent, signOut } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const [manualToggle, setManualToggle] = useState<Record<string, boolean>>({});
 
@@ -213,6 +215,39 @@ export function NavRail() {
         {topEntries.map(renderEntry)}
         <div className="mt-2 border-t border-line-soft pt-2">{bottomEntries.map(renderEntry)}</div>
       </nav>
+
+      {agent && (
+        <div className={`border-t border-line-soft p-3 ${collapsed ? "flex justify-center" : ""}`}>
+          {collapsed ? (
+            <button
+              type="button"
+              title={`${agent.name} — Cerrar sesión`}
+              onClick={() => signOut()}
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-brand/10 text-sm font-semibold text-brand hover:bg-brand/20"
+            >
+              {agent.name.charAt(0).toUpperCase()}
+            </button>
+          ) : (
+            <div className="flex items-center gap-2">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand/10 text-sm font-semibold text-brand">
+                {agent.name.charAt(0).toUpperCase()}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-ink">{agent.name}</p>
+                <p className="truncate text-xs text-muted">{agent.email}</p>
+              </div>
+              <button
+                type="button"
+                title="Cerrar sesión"
+                onClick={() => signOut()}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted hover:bg-bg-subtle hover:text-ink"
+              >
+                <Icon name="salir" size={16} />
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </aside>
   );
 }

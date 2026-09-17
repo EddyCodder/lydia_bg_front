@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { agents, calendarEvents } from "@/lib/mock-data";
+import { agents, calendarEvents as mockCalendarEvents } from "@/lib/mock-data";
+import { LYDIA_API_ENABLED } from "@/lib/lydia-api/config";
+import { useCalendarEvents } from "@/lib/queries/calendar-events";
 import { EventCard } from "./EventCard";
 import { TaskQuickCreate, type QuickTask } from "./TaskQuickCreate";
 
@@ -23,6 +25,10 @@ export function CalendarView() {
   const [view, setView] = useState<ViewTab>("Día");
   const [tasks, setTasks] = useState<QuickTask[]>([]);
 
+  const { data: realEvents = [], error: eventsError } = useCalendarEvents();
+  const isMockMode = !LYDIA_API_ENABLED || eventsError !== null;
+  const events = isMockMode ? mockCalendarEvents : realEvents;
+
   const now = useMemo(() => new Date(), []);
   const tomorrow = useMemo(() => {
     const d = new Date(now);
@@ -30,8 +36,8 @@ export function CalendarView() {
     return d;
   }, [now]);
 
-  const eventsToday = calendarEvents.filter((e) => isSameDay(e.startAt, now));
-  const eventsTomorrow = calendarEvents.filter((e) => isSameDay(e.startAt, tomorrow));
+  const eventsToday = events.filter((e) => isSameDay(e.startAt, now));
+  const eventsTomorrow = events.filter((e) => isSameDay(e.startAt, tomorrow));
 
   return (
     <section className="scroll-slim flex h-full flex-1 flex-col overflow-y-auto bg-bg px-8 py-6">

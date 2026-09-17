@@ -1,5 +1,18 @@
 import "server-only";
-import type { ChatStatus, EvoAgent, EvoConversation, EvoMessage, EvoMessagesResponse } from "./types";
+import type {
+  ChatStatus,
+  EvoAgent,
+  EvoCalendarEvent,
+  EvoCalendarEventType,
+  EvoConversation,
+  EvoLead,
+  EvoMessage,
+  EvoMessagesResponse,
+  EvoPersonalInsights,
+  EvoQuickReplyTemplate,
+  EvoTemplateGroup,
+  LeadStage,
+} from "./types";
 
 /**
  * Cliente del backend de Lydia: Evolution API (lydia_bg_back) para
@@ -89,4 +102,104 @@ export async function assignConversation(chatId: string, assignedAgentId: string
     method: "PATCH",
     body: JSON.stringify({ assignedAgentId }),
   });
+}
+
+// LYD-8: pipeline de leads
+
+export async function listLeads(params: { stage?: LeadStage; assignedAgentId?: string; source?: string } = {}): Promise<EvoLead[]> {
+  const query = new URLSearchParams();
+  if (params.stage) query.set("stage", params.stage);
+  if (params.assignedAgentId) query.set("assignedAgentId", params.assignedAgentId);
+  if (params.source) query.set("source", params.source);
+  const qs = query.toString();
+  return evoFetch<EvoLead[]>(`/crm/leads${qs ? `?${qs}` : ""}`);
+}
+
+export async function createLead(data: Partial<EvoLead> & { contactName: string; source: string }): Promise<EvoLead> {
+  return evoFetch<EvoLead>(`/crm/leads`, { method: "POST", body: JSON.stringify(data) });
+}
+
+export async function updateLead(id: string, data: Partial<EvoLead>): Promise<EvoLead> {
+  return evoFetch<EvoLead>(`/crm/leads/${id}`, { method: "PATCH", body: JSON.stringify(data) });
+}
+
+export async function deleteLead(id: string): Promise<void> {
+  await evoFetch<void>(`/crm/leads/${id}`, { method: "DELETE" });
+}
+
+// LYD-9: calendario por agente
+
+export async function listCalendarEvents(
+  params: { agentId?: string; leadId?: string; from?: string; to?: string } = {},
+): Promise<EvoCalendarEvent[]> {
+  const query = new URLSearchParams();
+  if (params.agentId) query.set("agentId", params.agentId);
+  if (params.leadId) query.set("leadId", params.leadId);
+  if (params.from) query.set("from", params.from);
+  if (params.to) query.set("to", params.to);
+  const qs = query.toString();
+  return evoFetch<EvoCalendarEvent[]>(`/crm/calendar-events${qs ? `?${qs}` : ""}`);
+}
+
+export async function createCalendarEvent(data: {
+  type: EvoCalendarEventType;
+  leadId?: string;
+  agentId?: string;
+  startAt: string;
+  endAt: string;
+  note: string;
+}): Promise<EvoCalendarEvent> {
+  return evoFetch<EvoCalendarEvent>(`/crm/calendar-events`, { method: "POST", body: JSON.stringify(data) });
+}
+
+export async function updateCalendarEvent(id: string, data: Partial<EvoCalendarEvent>): Promise<EvoCalendarEvent> {
+  return evoFetch<EvoCalendarEvent>(`/crm/calendar-events/${id}`, { method: "PATCH", body: JSON.stringify(data) });
+}
+
+export async function deleteCalendarEvent(id: string): Promise<void> {
+  await evoFetch<void>(`/crm/calendar-events/${id}`, { method: "DELETE" });
+}
+
+// LYD-10: plantillas de respuesta rapida
+
+export async function listTemplateGroups(): Promise<EvoTemplateGroup[]> {
+  return evoFetch<EvoTemplateGroup[]>(`/crm/template-groups`);
+}
+
+export async function createTemplateGroup(title: string): Promise<EvoTemplateGroup> {
+  return evoFetch<EvoTemplateGroup>(`/crm/template-groups`, { method: "POST", body: JSON.stringify({ title }) });
+}
+
+export async function createTemplate(
+  groupId: string,
+  data: { command: string; label: string; body: string },
+): Promise<EvoQuickReplyTemplate> {
+  return evoFetch<EvoQuickReplyTemplate>(`/crm/template-groups/${groupId}/templates`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateTemplate(
+  id: string,
+  data: Partial<Pick<EvoQuickReplyTemplate, "command" | "label" | "body">>,
+): Promise<EvoQuickReplyTemplate> {
+  return evoFetch<EvoQuickReplyTemplate>(`/crm/templates/${id}`, { method: "PATCH", body: JSON.stringify(data) });
+}
+
+export async function deleteTemplate(id: string): Promise<void> {
+  await evoFetch<void>(`/crm/templates/${id}`, { method: "DELETE" });
+}
+
+// LYD-11: insights agregados (solo lectura)
+
+export async function getPersonalInsights(
+  params: { agentId?: string; from?: string; to?: string } = {},
+): Promise<EvoPersonalInsights> {
+  const query = new URLSearchParams();
+  if (params.agentId) query.set("agentId", params.agentId);
+  if (params.from) query.set("from", params.from);
+  if (params.to) query.set("to", params.to);
+  const qs = query.toString();
+  return evoFetch<EvoPersonalInsights>(`/crm/insights/personal${qs ? `?${qs}` : ""}`);
 }

@@ -60,3 +60,84 @@ export interface EvoMessagesResponse {
     records: EvoMessage[];
   };
 }
+
+// LYD-8: pipeline de leads. GET/POST /crm/leads, GET/PATCH/DELETE /crm/leads/:id
+export type LeadStage =
+  | "contacto_inicial"
+  | "negociacion"
+  | "promesa_pago"
+  | "discusion_contrato"
+  | "matriculado"
+  | "venta_perdida";
+
+export interface EvoLead {
+  id: string;
+  leadNumber: string;
+  contactName: string;
+  company: string | null;
+  phone: string | null;
+  email: string | null;
+  position: string | null;
+  source: string;
+  budget: string | null;
+  budgetAmount: string; // Prisma Decimal serializa como string en JSON
+  stage: LeadStage;
+  hasPendingTasks: boolean;
+  chatId: string | null;
+  assignedAgentId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  Agent: EvoAgent | null;
+  Chat: { id: string; remoteJid: string } | null;
+}
+
+// LYD-9: calendario por agente. GET/POST /crm/calendar-events, PATCH/DELETE /crm/calendar-events/:id
+export type EvoCalendarEventType = "chat" | "nota" | "tarea" | "reserva";
+
+export interface EvoCalendarEvent {
+  id: string;
+  type: EvoCalendarEventType;
+  leadId: string | null;
+  agentId: string | null;
+  startAt: string;
+  endAt: string;
+  note: string;
+  completed: boolean;
+  createdAt: string;
+  updatedAt: string;
+  Agent: EvoAgent | null;
+  Lead: EvoLead | null;
+}
+
+// LYD-10: plantillas de respuesta rapida. GET/POST /crm/template-groups,
+// PATCH/DELETE /crm/template-groups/:id, POST /crm/template-groups/:groupId/templates,
+// PATCH/DELETE /crm/templates/:id
+export interface EvoQuickReplyTemplate {
+  id: string;
+  groupId: string;
+  command: string;
+  label: string;
+  body: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EvoTemplateGroup {
+  id: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+  Templates: EvoQuickReplyTemplate[];
+}
+
+// LYD-11: agregados de solo lectura. GET /crm/insights/personal
+export interface EvoPersonalInsights {
+  dialogosVigentes: number;
+  dialogosSinReplica: number;
+  leadsGanados: { count: number; sumBudget: number };
+  leadsActivos: { count: number; sumBudget: number };
+  leadsPerdidos: { count: number };
+  leadsSinTareas: { count: number };
+  fuentes: Record<string, number>;
+  tareas: { count: number };
+}
