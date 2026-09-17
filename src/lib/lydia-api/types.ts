@@ -6,12 +6,14 @@
  */
 
 export type ChatStatus = "open" | "pending" | "resolved";
+export type AgentRole = "asesor" | "administrador";
 
 export interface EvoAgent {
   id: string;
   name: string;
   email: string | null;
   color: string | null;
+  role: AgentRole;
   active: boolean;
 }
 
@@ -32,6 +34,7 @@ export interface EvoConversation {
   updatedAt: string;
   Agent: EvoAgent | null;
   contact: EvoContact | null;
+  lastMessage: { content: string; timestamp: number } | null;
 }
 
 // POST /chat/findMessages/:instance -- payload nativo de Evolution API

@@ -5,6 +5,8 @@ import { pipelineStages } from "@/lib/mock-data";
 import type { InboxConversation } from "@/lib/lydia-api/inbox-types";
 import type { PipelineStageId } from "@/lib/types";
 import { Icon } from "@/components/icons";
+import { LYDIA_API_ENABLED } from "@/lib/lydia-api/config";
+import { useAgents, useAssignAgent } from "@/lib/queries/conversations";
 
 interface Props {
   conversation: InboxConversation;
@@ -24,6 +26,10 @@ export function LeadDetailPanel({ conversation }: Props) {
   const [stage, setStage] = useState<PipelineStageId>("contacto_inicial");
   const [collapsed, setCollapsed] = useState(false);
   const stageIndex = pipelineStages.findIndex((s) => s.id === stage);
+
+  const { data: agents = [] } = useAgents();
+  const assignAgent = useAssignAgent(conversation.id);
+  const canReassign = LYDIA_API_ENABLED && conversation.remoteJid !== undefined;
 
   if (collapsed) {
     return (
@@ -123,7 +129,22 @@ export function LeadDetailPanel({ conversation }: Props) {
 
       <div className="mt-4 border-t border-line-soft pt-4">
         <label className="mb-1 block text-xs font-medium text-muted">Usuario responsable</label>
-        {assignee ? (
+        {canReassign ? (
+          <select
+            value={assignee?.id ?? ""}
+            disabled={assignAgent.isPending}
+            onChange={(e) => assignAgent.mutate(e.target.value || null)}
+            className="w-full rounded-md border border-line px-2.5 py-2 text-sm text-ink-soft focus:border-brand focus:outline-none"
+          >
+            <option value="">Sin asignar</option>
+            {agents.map((agent) => (
+              <option key={agent.id} value={agent.id}>
+                {agent.name}
+                {agent.role === "administrador" ? " (admin)" : ""}
+              </option>
+            ))}
+          </select>
+        ) : assignee ? (
           <p className="flex items-center gap-1.5 text-sm text-ink-soft">
             <span className="h-2 w-2 rounded-full bg-brand" />
             {assignee.name}
@@ -131,7 +152,9 @@ export function LeadDetailPanel({ conversation }: Props) {
         ) : (
           <p className="text-sm text-muted">Sin asignar</p>
         )}
-        <p className="mt-1 text-[11px] text-muted">Reasignar desde acá: pendiente (CRM-9).</p>
+        {!canReassign && (
+          <p className="mt-1 text-[11px] text-muted">Reasignar desde acá: solo disponible con el backend conectado.</p>
+        )}
       </div>
     </section>
   );

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { InboxConversation, InboxMessage } from "@/lib/lydia-api/inbox-types";
+import type { InboxAgent, InboxConversation, InboxMessage } from "@/lib/lydia-api/inbox-types";
 import { LYDIA_API_ENABLED } from "@/lib/lydia-api/config";
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
@@ -34,6 +34,33 @@ export function useMessages(conversationId: string | null) {
     enabled: LYDIA_API_ENABLED && conversationId !== null,
     retry: false,
     refetchInterval: 10_000,
+  });
+}
+
+export function useAgents() {
+  return useQuery({
+    queryKey: ["agents"],
+    queryFn: () => fetchJson<{ agents: InboxAgent[] }>(`/api/lydia/agents`),
+    select: (data) => data.agents,
+    enabled: LYDIA_API_ENABLED,
+    retry: false,
+    staleTime: 60_000,
+  });
+}
+
+export function useAssignAgent(conversationId: string | null) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (agentId: string | null) =>
+      fetchJson<{ conversation: InboxConversation }>(`/api/lydia/conversations/${conversationId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ assignedAgentId: agentId }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["conversations"] });
+    },
   });
 }
 
