@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { pipelineStages } from "@/lib/mock-data";
-import type { InboxConversation } from "@/lib/chatwoot/inbox-types";
+import type { InboxConversation } from "@/lib/lydia-api/inbox-types";
 import type { PipelineStageId } from "@/lib/types";
 import { Icon } from "@/components/icons";
 
@@ -85,7 +85,7 @@ export function LeadDetailPanel({ conversation }: Props) {
           ))}
         </div>
         <p className="mt-1 text-[11px] text-muted">
-          Todavía no se guarda — Chatwoot no tiene un campo de etapa de pipeline (CRM-9).
+          Todavía no se guarda — el backend no tiene un campo de etapa de pipeline (CRM-9, CRM-12).
         </p>
       </div>
 
@@ -100,7 +100,7 @@ export function LeadDetailPanel({ conversation }: Props) {
 
       <div className="mt-4 flex items-center gap-2 border-t border-line-soft pt-4">
         {contact.avatarUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element -- avatar viene de un dominio externo (Chatwoot)
+          // eslint-disable-next-line @next/next/no-img-element -- avatar de perfil de WhatsApp, dominio externo
           <img src={contact.avatarUrl} alt="" className="h-9 w-9 rounded-full object-cover" />
         ) : (
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-line text-sm font-semibold text-ink-soft">

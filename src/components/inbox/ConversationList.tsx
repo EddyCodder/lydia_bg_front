@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { InboxConversation } from "@/lib/chatwoot/inbox-types";
+import type { InboxConversation } from "@/lib/lydia-api/inbox-types";
 import { ConversationListItem } from "./ConversationListItem";
 
 type StatusFilter = "todos" | "abierto" | "sin_respuesta" | "cerrado";
@@ -17,8 +17,8 @@ interface Props {
   conversations: InboxConversation[];
   isLoading: boolean;
   error: Error | null;
-  selectedConversationId: number | null;
-  onSelect: (conversationId: number) => void;
+  selectedConversationId: string | null;
+  onSelect: (conversationId: string) => void;
 }
 
 export function ConversationList({ conversations, isLoading, error, selectedConversationId, onSelect }: Props) {

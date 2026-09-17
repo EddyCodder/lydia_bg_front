@@ -1,18 +1,19 @@
 import { NextResponse } from "next/server";
-import { createMessage, listMessages } from "@/lib/chatwoot/client";
-import { adaptMessage } from "@/lib/chatwoot/adapters";
+import { getConversation, listMessages, sendMessage } from "@/lib/lydia-api/client";
+import { adaptMessage } from "@/lib/lydia-api/adapters";
 
 function errorResponse(error: unknown) {
   const message = error instanceof Error ? error.message : "Error desconocido";
-  const isConfigError = error instanceof Error && error.name === "ChatwootConfigError";
+  const isConfigError = error instanceof Error && error.name === "LydiaApiConfigError";
   return NextResponse.json({ error: message }, { status: isConfigError ? 503 : 502 });
 }
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   try {
-    const { payload } = await listMessages(Number(id));
-    return NextResponse.json({ messages: payload.map(adaptMessage) });
+    const conversation = await getConversation(id);
+    const messages = await listMessages(conversation.remoteJid);
+    return NextResponse.json({ messages: messages.map(adaptMessage) });
   } catch (error) {
     return errorResponse(error);
   }
@@ -28,8 +29,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   }
 
   try {
-    const message = await createMessage(Number(id), content);
-    return NextResponse.json({ message: adaptMessage(message) });
+    const conversation = await getConversation(id);
+    await sendMessage(conversation.remoteJid, content);
+    return NextResponse.json({ ok: true });
   } catch (error) {
     return errorResponse(error);
   }

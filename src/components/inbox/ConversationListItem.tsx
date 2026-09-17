@@ -1,4 +1,4 @@
-import type { InboxConversation } from "@/lib/chatwoot/inbox-types";
+import type { InboxConversation } from "@/lib/lydia-api/inbox-types";
 import { formatRelativeTime } from "@/lib/format";
 
 interface Props {
@@ -20,7 +20,7 @@ export function ConversationListItem({ conversation, active, onClick }: Props) {
     >
       <div className="relative shrink-0">
         {contact.avatarUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element -- avatar viene de un dominio externo (Chatwoot), sin allowlist configurado todavía
+          // eslint-disable-next-line @next/next/no-img-element -- avatar de perfil de WhatsApp, dominio externo sin allowlist configurado todavía
           <img src={contact.avatarUrl} alt="" className="h-10 w-10 rounded-full object-cover" />
         ) : (
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted-2 text-sm font-semibold text-white">

@@ -10,9 +10,9 @@ Hasta el 2026-09-16 este repo era un fork de [chatwoot/chatwoot](https://github.
 
 ## Estado de la conexión a datos (CRM-9, CRM-11, CRM-12)
 
-- El inbox (`src/lib/chatwoot/`) todavía habla el protocolo de la Application API de Chatwoot, apagado por defecto (`NEXT_PUBLIC_CHATWOOT_ENABLED=false` en `.env.example` — sin eso, cae a datos de ejemplo en vez de romperse). Esto es intencional por ahora: **CRM-11 solo movió el código, no reemplazó las llamadas** — sirve para no bloquear el deploy mientras se construye el backend real.
-- Pipelines, leads, calendario, automatizaciones e insights siguen sobre `src/lib/mock-data.ts`, sin persistencia real.
-- **CRM-12** (siguiente paso, backlog): construir en `lydia_bg_back` los endpoints que hoy daría Chatwoot (conversaciones, asignación de agente, notas internas, estado leído/labels) y apuntar `src/lib/chatwoot/` ahí en vez de a una instancia de Chatwoot. Evaluar entonces si conviene renombrar esa carpeta.
+- El inbox (`src/lib/lydia-api/`) habla contra `lydia_bg_back`: los endpoints nativos de Evolution API (`/chat/findMessages`, `/message/sendText`) para WhatsApp crudo, y los endpoints propios `/crm/*` (agregados en CRM-12) para agentes/asignación/estado/notas internas — lo que antes daba Chatwoot. Apagado por defecto (`NEXT_PUBLIC_LYDIA_API_ENABLED=false` en `.env.example` — sin eso, o sin `EVOLUTION_INSTANCE_NAME` con un número de WhatsApp ya conectado por QR, cae a datos de ejemplo en vez de romperse).
+- Pipelines, leads, calendario, automatizaciones e insights siguen sobre `src/lib/mock-data.ts`, sin persistencia real. Evaluar si conversación y lead terminan siendo la misma entidad o quedan vinculadas (pendiente, no resuelto en CRM-12).
+- La lista de conversaciones (`GET /crm/conversations`) no trae preview del último mensaje — Evolution no lo denormaliza en `Chat`, y traerlo por fila sería un N+1. `lastMessagePreview` queda vacío hasta que se decida agregarlo al join del backend.
 
 ## Despliegue
 

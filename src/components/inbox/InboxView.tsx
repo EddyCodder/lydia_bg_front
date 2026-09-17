@@ -2,9 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { useConversations, useMessages, useSendMessage } from "@/lib/queries/conversations";
-import { getMockMessages, mockInboxConversations } from "@/lib/chatwoot/mock-fallback";
-import { CHATWOOT_ENABLED } from "@/lib/chatwoot/config";
-import type { InboxMessage } from "@/lib/chatwoot/inbox-types";
+import { getMockMessages, mockInboxConversations } from "@/lib/lydia-api/mock-fallback";
+import { LYDIA_API_ENABLED } from "@/lib/lydia-api/config";
+import type { InboxMessage } from "@/lib/lydia-api/inbox-types";
 import { ConversationList } from "./ConversationList";
 import { LeadDetailPanel } from "./LeadDetailPanel";
 import { ChatThread } from "./ChatThread";
@@ -15,8 +15,8 @@ function MockModeBanner({ detail }: { detail?: string }) {
     <div className="flex items-center gap-2 border-b border-accent/30 bg-accent/10 px-4 py-2 text-xs text-accent-dark">
       <Icon name="ajustes" size={14} className="shrink-0" />
       <span>
-        Viendo datos de ejemplo — la conexión a Chatwoot está apagada{detail ? ` (${detail})` : ""}. Poné{" "}
-        <code className="rounded bg-white/50 px-1">NEXT_PUBLIC_CHATWOOT_ENABLED=true</code> en{" "}
+        Viendo datos de ejemplo — la conexión al backend de Lydia está apagada{detail ? ` (${detail})` : ""}. Poné{" "}
+        <code className="rounded bg-white/50 px-1">NEXT_PUBLIC_LYDIA_API_ENABLED=true</code> en{" "}
         <code className="rounded bg-white/50 px-1">.env.local</code> junto con las credenciales para conectar
         el inbox real.
       </span>
@@ -25,11 +25,11 @@ function MockModeBanner({ detail }: { detail?: string }) {
 }
 
 export function InboxView() {
-  const [selectedConversationId, setSelectedConversationId] = useState<number | null>(null);
-  const [mockDrafts, setMockDrafts] = useState<Record<number, InboxMessage[]>>({});
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
+  const [mockDrafts, setMockDrafts] = useState<Record<string, InboxMessage[]>>({});
 
   const { data: realConversations = [], isLoading, error } = useConversations("all");
-  const isMockMode = !CHATWOOT_ENABLED || error !== null;
+  const isMockMode = !LYDIA_API_ENABLED || error !== null;
   const conversations = isMockMode ? mockInboxConversations : realConversations;
 
   const effectiveSelectedId = selectedConversationId ?? conversations[0]?.id ?? null;
@@ -57,7 +57,7 @@ export function InboxView() {
     }
     if (effectiveSelectedId === null) return;
     const draft: InboxMessage = {
-      id: Date.now(),
+      id: `draft-${Date.now()}`,
       direction: "outbound",
       text,
       sentAt: new Date().toISOString(),

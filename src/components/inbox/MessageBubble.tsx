@@ -1,4 +1,4 @@
-import type { InboxMessage } from "@/lib/chatwoot/inbox-types";
+import type { InboxMessage } from "@/lib/lydia-api/inbox-types";
 import { formatMessageTime } from "@/lib/format";
 
 interface Props {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import type { InboxConversation, InboxMessage } from "@/lib/chatwoot/inbox-types";
+import type { InboxConversation, InboxMessage } from "@/lib/lydia-api/inbox-types";
 import { formatMessageDay } from "@/lib/format";
 import { MessageBubble } from "./MessageBubble";
 import { Composer } from "./Composer";
