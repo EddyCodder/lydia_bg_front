@@ -1,35 +1,85 @@
 "use client";
 
-import { useState } from "react";
-import { chatTemplates as initialTemplates } from "@/lib/mock-data";
-import type { ChatTemplate } from "@/lib/types";
-import { NewTemplateModal } from "./NewTemplateModal";
+import { useMemo, useState } from "react";
+import { templateGroups as mockTemplateGroups } from "@/lib/mock-data";
+import type { TemplateGroup } from "@/lib/types";
+import { LYDIA_API_ENABLED } from "@/lib/lydia-api/config";
+import { useCreateTemplate, useCreateTemplateGroup, useTemplateGroups } from "@/lib/queries/template-groups";
+import { NewTemplateModal, type NewTemplateData } from "./NewTemplateModal";
+
+interface Row {
+  key: string;
+  groupTitle: string;
+  command: string;
+  label: string;
+  body: string;
+}
+
+function flatten(groups: TemplateGroup[]): Row[] {
+  return groups.flatMap((group) =>
+    group.templates.map((t) => ({
+      key: `${group.id}-${t.command}`,
+      groupTitle: group.title,
+      command: t.command,
+      label: t.label,
+      body: t.body,
+    })),
+  );
+}
 
 export function PlantillasTable() {
-  const [templates, setTemplates] = useState<ChatTemplate[]>(initialTemplates);
+  const { data: realGroups = [], error: groupsError } = useTemplateGroups();
+  const isMockMode = !LYDIA_API_ENABLED || groupsError !== null;
+  const createGroup = useCreateTemplateGroup();
+  const createTemplate = useCreateTemplate();
+
+  // Modo mock: mismo estado local editable que antes de LYD-10, pero sobre
+  // el modelo real (TemplateGroup/QuickReplyTemplate) -- ya no existe
+  // ChatTemplate, que no tenia campo body y no calzaba con lo que Composer.tsx
+  // realmente inserta.
+  const [mockGroups, setMockGroups] = useState<TemplateGroup[]>(mockTemplateGroups);
+  const groups = isMockMode ? mockGroups : realGroups;
+  const rows = useMemo(() => flatten(groups), [groups]);
+
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [modalOpen, setModalOpen] = useState(false);
 
-  const allSelected = selected.size > 0 && selected.size === templates.length;
+  const allSelected = selected.size > 0 && selected.size === rows.length;
 
   const toggleAll = () => {
-    setSelected(allSelected ? new Set() : new Set(templates.map((t) => t.id)));
+    setSelected(allSelected ? new Set() : new Set(rows.map((r) => r.key)));
   };
 
-  const toggleOne = (id: string) => {
+  const toggleOne = (key: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
       return next;
     });
   };
 
-  const handleCreate = (data: { name: string; category: string }) => {
-    setTemplates((prev) => [
-      { id: `tpl-local-${Date.now()}`, name: data.name, type: "General", status: "No requerido", category: data.category },
-      ...prev,
-    ]);
+  const handleCreate = async (data: NewTemplateData) => {
+    if (isMockMode) {
+      setMockGroups((prev) => {
+        if (data.groupId) {
+          return prev.map((g) =>
+            g.id === data.groupId
+              ? { ...g, templates: [{ command: data.command, label: data.label, body: data.body }, ...g.templates] }
+              : g,
+          );
+        }
+        return [
+          { id: `tg-local-${Date.now()}`, title: data.newGroupTitle, templates: [{ command: data.command, label: data.label, body: data.body }] },
+          ...prev,
+        ];
+      });
+      setModalOpen(false);
+      return;
+    }
+
+    const groupId = data.groupId ?? (await createGroup.mutateAsync(data.newGroupTitle)).group.id;
+    await createTemplate.mutateAsync({ groupId, command: data.command, label: data.label, body: data.body });
     setModalOpen(false);
   };
 
@@ -47,44 +97,53 @@ export function PlantillasTable() {
       </div>
 
       <div className="mt-4 overflow-x-auto rounded-lg border border-line bg-surface">
-        <table className="w-full min-w-[640px] border-separate border-spacing-0 text-sm">
+        <table className="w-full min-w-[720px] border-separate border-spacing-0 text-sm">
           <thead>
             <tr className="text-left text-xs font-semibold uppercase tracking-wide text-muted">
               <th className="w-10 border-b border-line py-2.5 pl-4">
                 <input type="checkbox" checked={allSelected} onChange={toggleAll} className="accent-brand" />
               </th>
-              <th className="border-b border-line py-2.5 pr-4">Nombre</th>
-              <th className="border-b border-line py-2.5 pr-4">Tipo de plantilla</th>
-              <th className="border-b border-line py-2.5 pr-4">Estatus</th>
-              <th className="border-b border-line py-2.5 pr-4">Categoría</th>
+              <th className="border-b border-line py-2.5 pr-4">Comando</th>
+              <th className="border-b border-line py-2.5 pr-4">Etiqueta</th>
+              <th className="border-b border-line py-2.5 pr-4">Grupo</th>
+              <th className="border-b border-line py-2.5 pr-4">Texto</th>
             </tr>
           </thead>
           <tbody>
-            {templates.map((template) => (
-              <tr key={template.id} className="hover:bg-bg-subtle">
+            {rows.length === 0 && (
+              <tr>
+                <td colSpan={5} className="border-b border-line-soft py-6 text-center text-sm text-muted">
+                  Todavía no hay plantillas.
+                </td>
+              </tr>
+            )}
+            {rows.map((row) => (
+              <tr key={row.key} className="hover:bg-bg-subtle">
                 <td className="border-b border-line-soft py-2.5 pl-4">
                   <input
                     type="checkbox"
-                    checked={selected.has(template.id)}
-                    onChange={() => toggleOne(template.id)}
+                    checked={selected.has(row.key)}
+                    onChange={() => toggleOne(row.key)}
                     className="accent-brand"
                   />
                 </td>
-                <td className="border-b border-line-soft py-2.5 pr-4 font-medium text-accent-dark">{template.name}</td>
-                <td className="border-b border-line-soft py-2.5 pr-4 text-ink-soft">{template.type}</td>
+                <td className="border-b border-line-soft py-2.5 pr-4 font-medium text-accent-dark">{row.command}</td>
+                <td className="border-b border-line-soft py-2.5 pr-4 text-ink-soft">{row.label}</td>
                 <td className="border-b border-line-soft py-2.5 pr-4">
                   <span className="rounded-md bg-bg-subtle px-2 py-0.5 text-xs font-medium text-muted">
-                    {template.status}
+                    {row.groupTitle}
                   </span>
                 </td>
-                <td className="border-b border-line-soft py-2.5 pr-4 text-muted">{template.category || "—"}</td>
+                <td className="max-w-xs truncate border-b border-line-soft py-2.5 pr-4 text-muted" title={row.body}>
+                  {row.body}
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
 
-      {modalOpen && <NewTemplateModal onClose={() => setModalOpen(false)} onCreate={handleCreate} />}
+      {modalOpen && <NewTemplateModal groups={groups} onClose={() => setModalOpen(false)} onCreate={handleCreate} />}
     </section>
   );
 }

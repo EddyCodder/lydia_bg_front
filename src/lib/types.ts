@@ -96,10 +96,3 @@ export interface CalendarEvent {
   completed?: boolean;
 }
 
-export interface ChatTemplate {
-  id: string;
-  name: string;
-  type: string; // "General"
-  status: string; // "No requerido"
-  category?: string;
-}

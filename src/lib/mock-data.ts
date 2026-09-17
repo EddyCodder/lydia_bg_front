@@ -1,7 +1,6 @@
 import type {
   Agent,
   CalendarEvent,
-  ChatTemplate,
   Conversation,
   IncomingRequest,
   Lead,
@@ -523,21 +522,6 @@ export const calendarEvents: CalendarEvent[] = [
     endAt: "2026-09-16T10:30:00-05:00",
     note: "Confirmar matrícula",
   },
-];
-
-export const chatTemplates: ChatTemplate[] = [
-  { id: "tpl-1", name: "Kids", type: "General", status: "No requerido" },
-  { id: "tpl-2", name: "Au Pair info", type: "General", status: "No requerido" },
-  { id: "tpl-3", name: "Inglés a distancia (ex English discoveries)", type: "General", status: "No requerido" },
-  { id: "tpl-4", name: "TEFL info", type: "General", status: "No requerido" },
-  { id: "tpl-5", name: "Adultos", type: "General", status: "No requerido" },
-  { id: "tpl-6", name: "Qué Horarios libres tiene?", type: "General", status: "No requerido" },
-  { id: "tpl-7", name: "Costos", type: "General", status: "No requerido" },
-  { id: "tpl-8", name: "Teens", type: "General", status: "No requerido" },
-  { id: "tpl-9", name: "British Council", type: "General", status: "No requerido" },
-  { id: "tpl-10", name: "Sedes", type: "General", status: "No requerido" },
-  { id: "tpl-11", name: "Prekids", type: "General", status: "No requerido" },
-  { id: "tpl-12", name: "Precios adultos", type: "General", status: "No requerido" },
 ];
 
 export function getLeadByConversationId(conversationId: string): Lead | undefined {
