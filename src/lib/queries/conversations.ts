@@ -64,6 +64,22 @@ export function useAssignAgent(conversationId: string | null) {
   });
 }
 
+export function useMarkConversationRead() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (conversationId: string) =>
+      fetchJson<{ conversation: InboxConversation }>(`/api/lydia/conversations/${conversationId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ unreadMessages: 0 }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["conversations"] });
+    },
+  });
+}
+
 export function useSendMessage(conversationId: string | null) {
   const queryClient = useQueryClient();
 

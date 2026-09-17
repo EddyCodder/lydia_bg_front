@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useConversations, useMessages, useSendMessage } from "@/lib/queries/conversations";
+import { useEffect, useMemo, useState } from "react";
+import { useConversations, useMarkConversationRead, useMessages, useSendMessage } from "@/lib/queries/conversations";
 import { getMockMessages, mockInboxConversations } from "@/lib/lydia-api/mock-fallback";
 import { LYDIA_API_ENABLED } from "@/lib/lydia-api/config";
 import type { InboxMessage } from "@/lib/lydia-api/inbox-types";
@@ -41,6 +41,20 @@ export function InboxView() {
     error: realMessagesError,
   } = useMessages(isMockMode ? null : effectiveSelectedId);
   const sendMessage = useSendMessage(effectiveSelectedId);
+  const markConversationRead = useMarkConversationRead();
+
+  // LYD-13: abrir un chat con mensajes sin leer lo marca como leido. Antes
+  // de esto Chat.unreadMessages (Evolution API) nunca se reseteaba, asi que
+  // el badge de "N sin leer" quedaba pegado para siempre, hasta despues de
+  // responder.
+  useEffect(() => {
+    if (isMockMode || effectiveSelectedId === null) return;
+    const conversation = conversations.find((c) => c.id === effectiveSelectedId);
+    if (conversation && conversation.unreadCount > 0) {
+      markConversationRead.mutate(effectiveSelectedId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo debe disparar al cambiar de conversacion, no en cada refetch de `conversations`
+  }, [effectiveSelectedId, isMockMode]);
 
   const mockMessages = useMemo(
     () =>

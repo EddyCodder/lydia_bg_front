@@ -1,17 +1,22 @@
 import { NextResponse } from "next/server";
-import { assignConversation } from "@/lib/lydia-api/client";
+import { assignConversation, markConversationRead } from "@/lib/lydia-api/client";
 import { adaptConversation } from "@/lib/lydia-api/adapters";
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const body = await request.json().catch(() => null);
 
-  if (!("assignedAgentId" in (body ?? {}))) {
-    return NextResponse.json({ error: "assignedAgentId es requerido" }, { status: 400 });
+  const hasAssignedAgentId = "assignedAgentId" in (body ?? {});
+  const hasUnreadMessages = "unreadMessages" in (body ?? {});
+
+  if (!hasAssignedAgentId && !hasUnreadMessages) {
+    return NextResponse.json({ error: "assignedAgentId o unreadMessages es requerido" }, { status: 400 });
   }
 
   try {
-    const conversation = await assignConversation(id, body.assignedAgentId);
+    const conversation = hasUnreadMessages
+      ? await markConversationRead(id)
+      : await assignConversation(id, body.assignedAgentId);
     return NextResponse.json({ conversation: adaptConversation(conversation) });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Error desconocido";

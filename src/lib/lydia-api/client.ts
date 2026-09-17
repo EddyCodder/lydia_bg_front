@@ -104,6 +104,16 @@ export async function assignConversation(chatId: string, assignedAgentId: string
   });
 }
 
+// LYD-13: abrir una conversacion la marca como leida (Chat.unreadMessages de
+// Evolution API, nunca reseteado hasta ahora). El backend solo permite
+// setearlo a 0 (ver crm.service.ts), no es un PATCH generico.
+export async function markConversationRead(chatId: string): Promise<EvoConversation> {
+  return evoFetch<EvoConversation>(`/crm/conversations/${chatId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ unreadMessages: 0 }),
+  });
+}
+
 // LYD-8: pipeline de leads
 
 export async function listLeads(params: { stage?: LeadStage; assignedAgentId?: string; source?: string } = {}): Promise<EvoLead[]> {
