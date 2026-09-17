@@ -1,13 +1,20 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { getAgentById, leads, pipelineStages } from "@/lib/mock-data";
+import { getAgentById, leads as mockLeads, pipelineStages } from "@/lib/mock-data";
 import type { PipelineStageId } from "@/lib/types";
 import { formatCurrency, formatLeadCardDate } from "@/lib/format";
+import { LYDIA_API_ENABLED } from "@/lib/lydia-api/config";
+import { useAgents } from "@/lib/queries/conversations";
+import { useLeads } from "@/lib/queries/leads";
 
 export function LeadsTable() {
   const [search, setSearch] = useState("");
   const [stageFilter, setStageFilter] = useState<PipelineStageId | "todas">("todas");
+  const { data: realLeads = [], error: leadsError } = useLeads();
+  const { data: realAgents = [] } = useAgents();
+  const isMockMode = !LYDIA_API_ENABLED || leadsError !== null;
+  const leads = isMockMode ? mockLeads : realLeads;
 
   const filtered = useMemo(() => {
     return leads.filter((lead) => {
@@ -16,7 +23,7 @@ export function LeadsTable() {
       const query = search.trim().toLowerCase();
       return lead.contactName.toLowerCase().includes(query) || lead.leadNumber.toLowerCase().includes(query);
     });
-  }, [search, stageFilter]);
+  }, [leads, search, stageFilter]);
 
   return (
     <section className="flex h-full flex-1 flex-col overflow-hidden bg-bg-subtle">
@@ -76,7 +83,9 @@ export function LeadsTable() {
           <tbody>
             {filtered.map((lead) => {
               const stage = pipelineStages.find((s) => s.id === lead.stage);
-              const agent = getAgentById(lead.assignedAgentId);
+              const agentName = isMockMode
+                ? getAgentById(lead.assignedAgentId)?.name
+                : realAgents.find((a) => a.id === lead.assignedAgentId)?.name;
               return (
                 <tr key={lead.id} className="hover:bg-surface">
                   <td className="border-b border-line-soft py-2.5 pr-4">
@@ -91,10 +100,10 @@ export function LeadsTable() {
                     </span>
                   </td>
                   <td className="border-b border-line-soft py-2.5 pr-4 text-ink-soft">
-                    {agent ? (
+                    {agentName ? (
                       <span className="flex items-center gap-1.5">
-                        <span className={`h-2 w-2 rounded-full ${agent.color}`} />
-                        {agent.name}
+                        <span className="h-2 w-2 rounded-full bg-muted-2" />
+                        {agentName}
                       </span>
                     ) : (
                       <span className="text-muted">Sin asignar</span>

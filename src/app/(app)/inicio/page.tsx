@@ -1,15 +1,22 @@
+"use client";
+
 import Link from "next/link";
 import {
-  conversations,
+  conversations as mockConversations,
   getAgentById,
   getLeadByConversationId,
   getLeadsByStage,
-  leads,
+  leads as mockLeads,
   pipelineStages,
   sumBudget,
 } from "@/lib/mock-data";
+import type { Lead } from "@/lib/types";
 import { formatCurrency, formatRelativeTime } from "@/lib/format";
 import { Icon, type IconName } from "@/components/icons";
+import { LYDIA_API_ENABLED } from "@/lib/lydia-api/config";
+import { useConversations } from "@/lib/queries/conversations";
+import { useLeads } from "@/lib/queries/leads";
+import { useAuth } from "@/components/providers/AuthProvider";
 
 function StatCard({
   label,
@@ -47,25 +54,34 @@ function StatCard({
 }
 
 export default function InicioPage() {
-  const sinRespuesta = conversations.filter((c) => c.status === "sin_respuesta").length;
-  const abiertos = conversations.filter((c) => c.status !== "cerrado").length;
-  const matriculados = leads.filter((l) => l.stage === "matriculado").length;
-  const pipelineActivo = leads.filter((l) => l.stage !== "matriculado" && l.stage !== "venta_perdida");
+  const { agent } = useAuth();
+  const { data: realConversations = [], error: conversationsError } = useConversations();
+  const { data: realLeads = [], error: leadsError } = useLeads();
+  const isMockMode = !LYDIA_API_ENABLED || conversationsError !== null || leadsError !== null;
 
-  const actividadReciente = [...conversations]
-    .sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime())
-    .slice(0, 5);
+  const leadList: Lead[] = isMockMode ? mockLeads : realLeads;
+
+  const sinRespuesta = isMockMode
+    ? mockConversations.filter((c) => c.status === "sin_respuesta").length
+    : realConversations.filter((c) => c.status === "sin_respuesta").length;
+  const abiertos = isMockMode
+    ? mockConversations.filter((c) => c.status !== "cerrado").length
+    : realConversations.filter((c) => c.status !== "cerrado").length;
+  const matriculados = leadList.filter((l) => l.stage === "matriculado").length;
+  const pipelineActivo = leadList.filter((l) => l.stage !== "matriculado" && l.stage !== "venta_perdida");
 
   const distribucion = pipelineStages.map((stage) => ({
     stage,
-    count: getLeadsByStage(leads, stage.id).length,
+    count: getLeadsByStage(leadList, stage.id).length,
   }));
+
+  const nombreSaludo = isMockMode ? "Mafer" : (agent?.name ?? "");
 
   return (
     <section className="scroll-slim flex h-full flex-1 flex-col overflow-y-auto bg-bg px-8 py-8">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-ink">Hola, Mafer</h1>
+          <h1 className="text-xl font-bold text-ink">Hola, {nombreSaludo}</h1>
           <p className="mt-1 text-sm text-ink-soft">Esto es lo que está pasando hoy en Lydia.</p>
         </div>
         <div className="flex items-center gap-2">
@@ -86,7 +102,7 @@ export default function InicioPage() {
       </header>
 
       <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard label="Leads totales" value={String(leads.length)} icon="tabla" tone="brand" />
+        <StatCard label="Leads totales" value={String(leadList.length)} icon="tabla" tone="brand" />
         <StatCard
           label="Chats sin responder"
           value={String(sinRespuesta)}
@@ -124,7 +140,7 @@ export default function InicioPage() {
                 <div
                   key={stage.id}
                   className={stage.color}
-                  style={{ width: `${(count / leads.length) * 100}%` }}
+                  style={{ width: `${(count / (leadList.length || 1)) * 100}%` }}
                   title={`${stage.label}: ${count}`}
                 />
               ),
@@ -151,33 +167,58 @@ export default function InicioPage() {
         </div>
 
         <div className="mt-3 divide-y divide-line-soft rounded-lg border border-line bg-surface">
-          {actividadReciente.map((conversation) => {
-            const lead = getLeadByConversationId(conversation.id);
-            const agent = getAgentById(conversation.assignedAgentId);
-            if (!lead) return null;
-            return (
-              <Link
-                key={conversation.id}
-                href="/comunicaciones/inbox-chat"
-                className="flex items-center justify-between gap-3 px-4 py-3 text-sm hover:bg-bg-subtle"
-              >
-                <div className="flex min-w-0 items-center gap-3">
-                  <div
-                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white ${
-                      agent?.color ?? "bg-muted-2"
-                    }`}
+          {isMockMode
+            ? [...mockConversations]
+                .sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime())
+                .slice(0, 5)
+                .map((conversation) => {
+                  const lead = getLeadByConversationId(conversation.id);
+                  const agent = getAgentById(conversation.assignedAgentId);
+                  if (!lead) return null;
+                  return (
+                    <Link
+                      key={conversation.id}
+                      href="/comunicaciones/inbox-chat"
+                      className="flex items-center justify-between gap-3 px-4 py-3 text-sm hover:bg-bg-subtle"
+                    >
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div
+                          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white ${
+                            agent?.color ?? "bg-muted-2"
+                          }`}
+                        >
+                          {lead.contactName.slice(0, 1).toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold text-ink">{lead.contactName}</p>
+                          <p className="truncate text-ink-soft">{conversation.lastMessagePreview}</p>
+                        </div>
+                      </div>
+                      <span className="shrink-0 text-xs text-muted">{formatRelativeTime(conversation.lastMessageAt)}</span>
+                    </Link>
+                  );
+                })
+            : [...realConversations]
+                .sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime())
+                .slice(0, 5)
+                .map((conversation) => (
+                  <Link
+                    key={conversation.id}
+                    href="/comunicaciones/inbox-chat"
+                    className="flex items-center justify-between gap-3 px-4 py-3 text-sm hover:bg-bg-subtle"
                   >
-                    {lead.contactName.slice(0, 1).toUpperCase()}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="truncate font-semibold text-ink">{lead.contactName}</p>
-                    <p className="truncate text-ink-soft">{conversation.lastMessagePreview}</p>
-                  </div>
-                </div>
-                <span className="shrink-0 text-xs text-muted">{formatRelativeTime(conversation.lastMessageAt)}</span>
-              </Link>
-            );
-          })}
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted-2 text-xs font-semibold text-white">
+                        {conversation.contact.name.slice(0, 1).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold text-ink">{conversation.contact.name}</p>
+                        <p className="truncate text-ink-soft">{conversation.lastMessagePreview}</p>
+                      </div>
+                    </div>
+                    <span className="shrink-0 text-xs text-muted">{formatRelativeTime(conversation.lastMessageAt)}</span>
+                  </Link>
+                ))}
         </div>
       </div>
     </section>
