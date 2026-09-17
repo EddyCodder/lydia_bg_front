@@ -1,5 +1,5 @@
 import "server-only";
-import type { ChatStatus, EvoConversation, EvoMessage, EvoMessagesResponse } from "./types";
+import type { ChatStatus, EvoAgent, EvoConversation, EvoMessage, EvoMessagesResponse } from "./types";
 
 /**
  * Cliente del backend de Lydia: Evolution API (lydia_bg_back) para
@@ -77,5 +77,16 @@ export async function sendMessage(remoteJid: string, text: string): Promise<void
   await evoFetch(`/message/sendText/${instanceName}`, {
     method: "POST",
     body: JSON.stringify({ number: remoteJid, text }),
+  });
+}
+
+export async function listAgents(): Promise<EvoAgent[]> {
+  return evoFetch<EvoAgent[]>(`/crm/agents`);
+}
+
+export async function assignConversation(chatId: string, assignedAgentId: string | null): Promise<EvoConversation> {
+  return evoFetch<EvoConversation>(`/crm/conversations/${chatId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ assignedAgentId }),
   });
 }

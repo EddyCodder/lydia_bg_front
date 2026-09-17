@@ -1,4 +1,4 @@
-import type { EvoConversation, EvoMessage } from "./types";
+import type { EvoAgent, EvoConversation, EvoMessage } from "./types";
 import type { InboxAgent, InboxContact, InboxConversation, InboxMessage } from "./inbox-types";
 
 function jidToPhone(remoteJid: string): string {
@@ -16,11 +16,12 @@ export function adaptContact(conversation: EvoConversation): InboxContact {
   };
 }
 
-export function adaptAgent(agent: NonNullable<EvoConversation["Agent"]>): InboxAgent {
+export function adaptAgent(agent: EvoAgent): InboxAgent {
   return {
     id: agent.id,
     name: agent.name,
     avatarUrl: "",
+    role: agent.role,
   };
 }
 
@@ -61,12 +62,10 @@ export function adaptConversation(conversation: EvoConversation): InboxConversat
     contact: adaptContact(conversation),
     assignee: conversation.Agent ? adaptAgent(conversation.Agent) : undefined,
     status: deriveStatus(conversation),
-    // Evolution no guarda un "ultimo mensaje" denormalizado en Chat -- traerlo
-    // por cada fila del listado seria un N+1 (una query de mensajes por chat).
-    // Pendiente: agregarlo al join del backend (/crm/conversations) si hace
-    // falta la preview en la lista.
-    lastMessagePreview: "",
-    lastMessageAt: conversation.updatedAt,
+    lastMessagePreview: conversation.lastMessage?.content ?? "",
+    lastMessageAt: conversation.lastMessage
+      ? new Date(conversation.lastMessage.timestamp * 1000).toISOString()
+      : conversation.updatedAt,
     unreadCount: conversation.unreadMessages,
     inboxChannel: "whatsapp",
   };

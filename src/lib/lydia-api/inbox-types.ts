@@ -9,6 +9,7 @@ export interface InboxAgent {
   id: string;
   name: string;
   avatarUrl: string;
+  role?: "asesor" | "administrador";
 }
 
 export interface InboxContact {
