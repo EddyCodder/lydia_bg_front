@@ -1,18 +1,18 @@
 /**
  * Tipos "adaptados" para el inbox real (a diferencia de los tipos mock en
  * @/lib/types, que siguen alimentando Pipelines/Calendario/Automatizaciones/
- * Insights). No tienen stage/budget porque Chatwoot no los modela — eso
- * sigue pendiente (ver CRM-9).
+ * Insights). No tienen stage/budget porque el backend no los modela todavia
+ * -- sigue pendiente (ver CRM-9, CRM-12).
  */
 
 export interface InboxAgent {
-  id: number;
+  id: string;
   name: string;
   avatarUrl: string;
 }
 
 export interface InboxContact {
-  chatwootContactId: number;
+  lydiaContactId: string;
   name: string;
   email: string | null;
   phone: string | null;
@@ -22,7 +22,7 @@ export interface InboxContact {
 export type InboxMessageDirection = "inbound" | "outbound" | "system";
 
 export interface InboxMessage {
-  id: number;
+  id: string;
   direction: InboxMessageDirection;
   text: string;
   sentAt: string; // ISO
@@ -33,7 +33,8 @@ export interface InboxMessage {
 export type InboxConversationStatus = "abierto" | "sin_respuesta" | "cerrado";
 
 export interface InboxConversation {
-  id: number; // display_id de Chatwoot
+  id: string; // Chat.id (cuid) en lydia_bg_back
+  remoteJid?: string; // ausente en datos de ejemplo (mock-fallback)
   contact: InboxContact;
   assignee?: InboxAgent;
   status: InboxConversationStatus;
