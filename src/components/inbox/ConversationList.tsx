@@ -43,7 +43,7 @@ export function ConversationList({ conversations, isLoading, error, selectedConv
   }, [conversations, search, activeFilter]);
 
   return (
-    <section className="flex h-full w-96 shrink-0 flex-col border-r border-line bg-surface">
+    <section className="flex h-full w-full shrink-0 flex-col border-r border-line bg-surface md:w-96">
       <div className="border-b border-line-soft p-3">
         <div className="relative">
           <svg

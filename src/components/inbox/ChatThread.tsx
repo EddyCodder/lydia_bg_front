@@ -6,6 +6,7 @@ import { formatMessageDay } from "@/lib/format";
 import { MessageBubble } from "./MessageBubble";
 import { Composer, type ComposerMediaInput } from "./Composer";
 import { EditContactMenu } from "./EditContactMenu";
+import { Icon } from "@/components/icons";
 
 interface Props {
   conversation: InboxConversation;
@@ -19,6 +20,7 @@ interface Props {
   onLoadOlder?: () => void;
   loadingOlder?: boolean;
   hasMoreOlder?: boolean;
+  onBack?: () => void;
 }
 
 export function ChatThread({
@@ -33,6 +35,7 @@ export function ChatThread({
   onLoadOlder,
   loadingOlder = false,
   hasMoreOlder = false,
+  onBack,
 }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const lastMessageIdRef = useRef<string | null>(null);
@@ -57,9 +60,21 @@ export function ChatThread({
       onContextMenu={(e) => e.preventDefault()}
     >
       <header className="flex items-center justify-between border-b border-line-soft bg-surface px-5 py-3">
-        <div>
-          <p className="text-sm font-semibold text-ink">{conversation.contact.name}</p>
-          <p className="text-xs text-muted">{conversation.inboxChannel}</p>
+        <div className="flex min-w-0 items-center gap-2">
+          {onBack && (
+            <button
+              type="button"
+              onClick={onBack}
+              aria-label="Volver al listado de conversaciones"
+              className="-ml-1.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted hover:bg-bg-subtle hover:text-ink-soft md:hidden"
+            >
+              <Icon name="flecha" size={16} className="rotate-180" />
+            </button>
+          )}
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-ink">{conversation.contact.name}</p>
+            <p className="text-xs text-muted">{conversation.inboxChannel}</p>
+          </div>
         </div>
         <EditContactMenu
           name={conversation.contact.name}

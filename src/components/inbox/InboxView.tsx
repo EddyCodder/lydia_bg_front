@@ -35,6 +35,10 @@ function MockModeBanner({ detail }: { detail?: string }) {
 
 export function InboxView() {
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
+  // LYD-18: en mobile el inbox alterna entre lista y chat en vez de apilar
+  // las tres columnas (lista + detalle + hilo) -- a partir de `md` siempre
+  // se ven ambas y este estado no importa (las clases responsive lo tapan).
+  const [mobileView, setMobileView] = useState<"list" | "thread">("list");
   const [mockDrafts, setMockDrafts] = useState<Record<string, InboxMessage[]>>({});
   // LYD-14: en modo mock (o mientras el backend no responde) el override de
   // nombre/telefono se guarda solo en memoria -- no hay Chat real donde
@@ -173,33 +177,47 @@ export function InboxView() {
     <div className="flex h-full flex-1 flex-col overflow-hidden bg-bg text-ink">
       {isMockMode && <MockModeBanner detail={error?.message} />}
       <div className="flex flex-1 overflow-hidden">
-        <ConversationList
-          conversations={conversations}
-          isLoading={isMockMode ? false : isLoading}
-          error={null}
-          selectedConversationId={effectiveSelectedId}
-          onSelect={setSelectedConversationId}
-        />
+        <div className={`${mobileView === "list" ? "flex" : "hidden"} w-full shrink-0 md:flex md:w-auto`}>
+          <ConversationList
+            conversations={conversations}
+            isLoading={isMockMode ? false : isLoading}
+            error={null}
+            selectedConversationId={effectiveSelectedId}
+            onSelect={(id) => {
+              setSelectedConversationId(id);
+              setMobileView("thread");
+            }}
+          />
+        </div>
 
         {selectedConversation ? (
           <>
-            <LeadDetailPanel key={selectedConversation.id} conversation={selectedConversation} />
-            <ChatThread
-              conversation={selectedConversation}
-              thread={isMockMode ? mockMessages : [...olderMessages, ...realMessages]}
-              isLoading={isMockMode ? false : realMessagesLoading}
-              error={isMockMode ? null : realMessagesError}
-              sending={!isMockMode && (sendMessage.isPending || sendMedia.isPending)}
-              onSend={handleSend}
-              onSendMedia={handleSendMedia}
-              onEditContact={handleEditContact}
-              onLoadOlder={handleLoadOlder}
-              loadingOlder={loadOlderMessages.isPending}
-              hasMoreOlder={!isMockMode && hasMoreOlder && olderMessages.length + realMessages.length >= 100}
-            />
+            <div className="hidden lg:flex">
+              <LeadDetailPanel key={selectedConversation.id} conversation={selectedConversation} />
+            </div>
+            <div className={`${mobileView === "thread" ? "flex" : "hidden"} w-full flex-1 md:flex`}>
+              <ChatThread
+                conversation={selectedConversation}
+                thread={isMockMode ? mockMessages : [...olderMessages, ...realMessages]}
+                isLoading={isMockMode ? false : realMessagesLoading}
+                error={isMockMode ? null : realMessagesError}
+                sending={!isMockMode && (sendMessage.isPending || sendMedia.isPending)}
+                onSend={handleSend}
+                onSendMedia={handleSendMedia}
+                onEditContact={handleEditContact}
+                onLoadOlder={handleLoadOlder}
+                loadingOlder={loadOlderMessages.isPending}
+                hasMoreOlder={!isMockMode && hasMoreOlder && olderMessages.length + realMessages.length >= 100}
+                onBack={() => setMobileView("list")}
+              />
+            </div>
           </>
         ) : (
-          <div className="flex flex-1 items-center justify-center text-sm text-muted">
+          <div
+            className={`${
+              mobileView === "list" ? "hidden md:flex" : "flex"
+            } flex-1 items-center justify-center text-sm text-muted`}
+          >
             {isLoading && !isMockMode ? "Cargando conversaciones…" : "No hay conversaciones para mostrar."}
           </div>
         )}
