@@ -5,15 +5,45 @@ import { templateGroups as mockTemplateGroups } from "@/lib/mock-data";
 import { LYDIA_API_ENABLED } from "@/lib/lydia-api/config";
 import { useTemplateGroups } from "@/lib/queries/template-groups";
 
+export interface ComposerMediaInput {
+  mediatype: "image" | "document" | "video" | "audio";
+  media: string;
+  mimetype?: string;
+  fileName?: string;
+}
+
 interface Props {
-  onSend: (text: string) => void;
+  onSend: (text: string) => Promise<void>;
+  onSendMedia: (input: ComposerMediaInput) => Promise<void>;
   disabled?: boolean;
 }
 
-export function Composer({ onSend, disabled = false }: Props) {
+function mediatypeFromMime(mimetype: string): ComposerMediaInput["mediatype"] {
+  if (mimetype.startsWith("image/")) return "image";
+  if (mimetype.startsWith("video/")) return "video";
+  if (mimetype.startsWith("audio/")) return "audio";
+  return "document";
+}
+
+function readFileAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      resolve(result.slice(result.indexOf(",") + 1));
+    };
+    reader.onerror = () => reject(reader.error ?? new Error("No se pudo leer el archivo"));
+    reader.readAsDataURL(file);
+  });
+}
+
+export function Composer({ onSend, onSendMedia, disabled = false }: Props) {
   const [value, setValue] = useState("");
   const [highlighted, setHighlighted] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [isSending, setIsSending] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: realGroups = [], error: groupsError } = useTemplateGroups();
   const isMockMode = !LYDIA_API_ENABLED || groupsError !== null;
@@ -32,10 +62,44 @@ export function Composer({ onSend, disabled = false }: Props) {
     [isSlashMode, query, allTemplates],
   );
 
-  const handleSend = () => {
-    if (!value.trim() || disabled) return;
-    onSend(value.trim());
-    setValue("");
+  const handleSend = async () => {
+    const text = value.trim();
+    if (!text || disabled || isSending) return;
+    setError(null);
+    setIsSending(true);
+    try {
+      await onSend(text);
+      setValue("");
+    } catch (e) {
+      // LYD-14: antes esto borraba el texto igual y el mensaje se perdia en
+      // silencio si el POST fallaba -- ahora se mantiene en el composer y
+      // se puede reintentar con el mismo texto.
+      setError(e instanceof Error ? e.message : "No se pudo enviar el mensaje");
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // permite elegir el mismo archivo dos veces seguidas
+    if (!file || disabled || isSending) return;
+
+    setError(null);
+    setIsSending(true);
+    try {
+      const media = await readFileAsBase64(file);
+      await onSendMedia({
+        mediatype: mediatypeFromMime(file.type),
+        media,
+        mimetype: file.type || "application/octet-stream",
+        fileName: file.name,
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo enviar el archivo");
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const selectTemplate = (template: (typeof allTemplates)[number]) => {
@@ -46,6 +110,16 @@ export function Composer({ onSend, disabled = false }: Props) {
 
   return (
     <div className="border-t border-line-soft p-3">
+      {error && (
+        <div className="mb-2 flex items-center justify-between gap-2 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger">
+          <span>No se pudo enviar: {error}</span>
+          {value.trim() && (
+            <button type="button" onClick={handleSend} className="shrink-0 font-semibold underline hover:no-underline">
+              Reintentar
+            </button>
+          )}
+        </div>
+      )}
       <div className="relative rounded-2xl border border-line bg-surface">
         {isSlashMode && (
           <div className="scroll-slim absolute bottom-full left-0 z-10 mb-2 max-h-64 w-full overflow-y-auto rounded-lg border border-line bg-surface py-1 shadow-lg">
@@ -72,6 +146,7 @@ export function Composer({ onSend, disabled = false }: Props) {
           onChange={(e) => {
             setValue(e.target.value);
             setHighlighted(0);
+            setError(null);
           }}
           onKeyDown={(e) => {
             if (isSlashMode && filtered.length > 0) {
@@ -115,11 +190,24 @@ export function Composer({ onSend, disabled = false }: Props) {
                 <line x1="15" y1="9" x2="15.01" y2="9" />
               </svg>
             </button>
-            <button type="button" aria-label="Adjuntar archivo" className="hover:text-ink-soft">
+            <button
+              type="button"
+              aria-label="Adjuntar archivo"
+              disabled={disabled || isSending}
+              onClick={() => fileInputRef.current?.click()}
+              className="hover:text-ink-soft disabled:cursor-not-allowed disabled:opacity-50"
+            >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M21.44 11.05l-9.19 9.19a5 5 0 01-7.07-7.07l9.19-9.19a3.5 3.5 0 014.95 4.95l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
               </svg>
             </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              onChange={handleFileChange}
+              accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt"
+              className="hidden"
+            />
             <button type="button" aria-label="Nota de voz" className="hover:text-ink-soft">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
@@ -131,10 +219,10 @@ export function Composer({ onSend, disabled = false }: Props) {
           <button
             type="button"
             onClick={handleSend}
-            disabled={!value.trim() || disabled}
+            disabled={!value.trim() || disabled || isSending}
             className="rounded-lg bg-muted-2 px-4 py-1.5 text-sm font-medium text-white transition-colors enabled:bg-brand enabled:hover:bg-brand-dark disabled:cursor-not-allowed"
           >
-            {disabled ? "Enviando…" : "Enviar"}
+            {disabled || isSending ? "Enviando…" : "Enviar"}
           </button>
         </div>
       </div>

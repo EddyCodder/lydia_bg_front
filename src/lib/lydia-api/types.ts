@@ -56,6 +56,24 @@ export interface EvoMessage {
   MessageUpdate?: { status: string }[];
 }
 
+// POST /message/sendMedia/:instance -- media como base64 o url (SendMediaDto)
+export interface EvoSendMediaInput {
+  mediatype: "image" | "document" | "video" | "audio";
+  media: string;
+  mimetype?: string;
+  fileName?: string;
+  caption?: string;
+}
+
+// POST /chat/getBase64FromMediaMessage/:instance
+export interface EvoMediaResult {
+  mediaType: string;
+  fileName: string;
+  caption?: string;
+  mimetype: string;
+  base64: string;
+}
+
 export interface EvoMessagesResponse {
   messages: {
     total: number;

@@ -22,6 +22,19 @@ export interface InboxContact {
 
 export type InboxMessageDirection = "inbound" | "outbound" | "system";
 
+export type InboxMediaKind = "image" | "video" | "audio" | "document" | "sticker";
+
+export interface InboxMessageMedia {
+  kind: InboxMediaKind;
+  caption?: string;
+  fileName?: string;
+  mimetype?: string;
+  // Datos crudos (key + message) necesarios para pedirle a Evolution API el
+  // base64 bajo demanda (LYD-15) -- no se resuelve al listar mensajes para
+  // no cargar cada poll con blobs pesados, solo cuando el bubble lo pide.
+  raw: { key: unknown; message: unknown };
+}
+
 export interface InboxMessage {
   id: string;
   direction: InboxMessageDirection;
@@ -29,6 +42,7 @@ export interface InboxMessage {
   sentAt: string; // ISO
   read: boolean;
   senderName?: string;
+  media?: InboxMessageMedia;
 }
 
 export type InboxConversationStatus = "abierto" | "sin_respuesta" | "cerrado";

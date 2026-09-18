@@ -7,7 +7,7 @@ import type {
   EvoPersonalInsights,
   EvoTemplateGroup,
 } from "./types";
-import type { InboxAgent, InboxContact, InboxConversation, InboxMessage } from "./inbox-types";
+import type { InboxAgent, InboxContact, InboxConversation, InboxMediaKind, InboxMessage, InboxMessageMedia } from "./inbox-types";
 import type { CalendarEvent, Lead, TemplateGroup } from "@/lib/types";
 
 function jidToPhone(remoteJid: string): string {
@@ -42,17 +42,49 @@ function messageText(message: EvoMessage["message"]): string {
   return message?.conversation ?? message?.extendedTextMessage?.text ?? "";
 }
 
+// LYD-15: mapa de los campos de media crudos de WhatsApp/Baileys a los tipos
+// que puede renderizar MessageBubble. El base64 no se resuelve aca -- se
+// pide bajo demanda (ver client.ts getMediaBase64) para no cargar cada poll
+// de listMessages con blobs pesados.
+const MEDIA_KIND_BY_KEY: Record<string, InboxMediaKind> = {
+  imageMessage: "image",
+  videoMessage: "video",
+  audioMessage: "audio",
+  documentMessage: "document",
+  stickerMessage: "sticker",
+};
+
+function detectMedia(raw: EvoMessage): InboxMessageMedia | undefined {
+  for (const [key, kind] of Object.entries(MEDIA_KIND_BY_KEY)) {
+    const payload = raw.message?.[key] as
+      | { caption?: string; fileName?: string; mimetype?: string }
+      | undefined;
+    if (payload) {
+      return {
+        kind,
+        caption: payload.caption,
+        fileName: payload.fileName,
+        mimetype: payload.mimetype,
+        raw: { key: raw.key, message: raw.message },
+      };
+    }
+  }
+  return undefined;
+}
+
 export function adaptMessage(message: EvoMessage): InboxMessage {
   const direction: InboxMessage["direction"] = message.key.fromMe ? "outbound" : "inbound";
   const lastStatus = message.MessageUpdate?.[message.MessageUpdate.length - 1]?.status;
+  const media = detectMedia(message);
 
   return {
     id: message.id,
     direction,
-    text: messageText(message.message),
+    text: media ? (media.caption ?? "") : messageText(message.message),
     sentAt: new Date(message.messageTimestamp * 1000).toISOString(),
     read: lastStatus === "READ" || lastStatus === "read",
     senderName: message.pushName ?? undefined,
+    media,
   };
 }
 

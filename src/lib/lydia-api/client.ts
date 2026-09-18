@@ -6,10 +6,12 @@ import type {
   EvoCalendarEventType,
   EvoConversation,
   EvoLead,
+  EvoMediaResult,
   EvoMessage,
   EvoMessagesResponse,
   EvoPersonalInsights,
   EvoQuickReplyTemplate,
+  EvoSendMediaInput,
   EvoTemplateGroup,
   LeadStage,
 } from "./types";
@@ -90,6 +92,29 @@ export async function sendMessage(remoteJid: string, text: string): Promise<void
   await evoFetch(`/message/sendText/${instanceName}`, {
     method: "POST",
     body: JSON.stringify({ number: remoteJid, text }),
+  });
+}
+
+// LYD-15: envio de adjuntos (imagen/documento/video/audio). Evolution API
+// acepta la media como base64 inline en el body, sin necesidad de multipart.
+export async function sendMedia(remoteJid: string, input: EvoSendMediaInput): Promise<void> {
+  const { instanceName } = getConfig();
+  await evoFetch(`/message/sendMedia/${instanceName}`, {
+    method: "POST",
+    body: JSON.stringify({ number: remoteJid, ...input }),
+  });
+}
+
+// LYD-15: baja bajo demanda el base64 de un mensaje de media recibido --
+// Evolution API descifra la media de WhatsApp (mediaKey + directPath) al
+// vuelo, no queda guardada en ningun lado (no hay S3/MinIO configurado en
+// este deploy). "message" es el {key, message} crudo tal cual vino de
+// listMessages.
+export async function getMediaBase64(message: { key: unknown; message: unknown }): Promise<EvoMediaResult> {
+  const { instanceName } = getConfig();
+  return evoFetch<EvoMediaResult>(`/chat/getBase64FromMediaMessage/${instanceName}`, {
+    method: "POST",
+    body: JSON.stringify({ message }),
   });
 }
 

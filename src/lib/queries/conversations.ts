@@ -120,3 +120,46 @@ export function useSendMessage(conversationId: string | null) {
     },
   });
 }
+
+export interface SendMediaInput {
+  mediatype: "image" | "document" | "video" | "audio";
+  media: string;
+  mimetype?: string;
+  fileName?: string;
+  caption?: string;
+}
+
+export function useSendMedia(conversationId: string | null) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: SendMediaInput) =>
+      fetchJson<{ ok: true }>(`/api/lydia/conversations/${conversationId}/media`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["messages", conversationId] });
+      queryClient.invalidateQueries({ queryKey: ["conversations"] });
+    },
+  });
+}
+
+// LYD-15: resuelve el base64 de un mensaje de media bajo demanda -- se
+// cachea por messageId asi MessageBubble no vuelve a pedirlo en cada re-render.
+export function useResolveMedia(messageId: string, raw: { key: unknown; message: unknown }, enabled: boolean) {
+  return useQuery({
+    queryKey: ["media", messageId],
+    queryFn: () =>
+      fetchJson<{ dataUrl: string }>(`/api/lydia/media`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(raw),
+      }),
+    select: (data) => data.dataUrl,
+    enabled,
+    retry: false,
+    staleTime: Infinity,
+  });
+}

@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import type { InboxConversation, InboxMessage } from "@/lib/lydia-api/inbox-types";
 import { formatMessageDay } from "@/lib/format";
 import { MessageBubble } from "./MessageBubble";
-import { Composer } from "./Composer";
+import { Composer, type ComposerMediaInput } from "./Composer";
 import { EditContactMenu } from "./EditContactMenu";
 
 interface Props {
@@ -12,12 +12,22 @@ interface Props {
   thread: InboxMessage[];
   isLoading: boolean;
   error: Error | null;
-  onSend: (text: string) => void;
+  onSend: (text: string) => Promise<void>;
+  onSendMedia: (input: ComposerMediaInput) => Promise<void>;
   sending: boolean;
   onEditContact: (name: string, phone: string) => void;
 }
 
-export function ChatThread({ conversation, thread, isLoading, error, onSend, sending, onEditContact }: Props) {
+export function ChatThread({
+  conversation,
+  thread,
+  isLoading,
+  error,
+  onSend,
+  onSendMedia,
+  sending,
+  onEditContact,
+}: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -63,7 +73,7 @@ export function ChatThread({ conversation, thread, isLoading, error, onSend, sen
         <div ref={bottomRef} />
       </div>
 
-      <Composer onSend={onSend} disabled={sending || !conversation.id} />
+      <Composer onSend={onSend} onSendMedia={onSendMedia} disabled={sending || !conversation.id} />
     </section>
   );
 }

@@ -1,5 +1,6 @@
 import type { InboxMessage } from "@/lib/lydia-api/inbox-types";
 import { formatMessageTime } from "@/lib/format";
+import { MessageMedia } from "./MessageMedia";
 
 interface Props {
   message: InboxMessage;
@@ -25,13 +26,13 @@ export function MessageBubble({ message }: Props) {
           </span>
         )}
         <div
-          className={`whitespace-pre-line rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-            isOutbound
-              ? "rounded-tr-sm bg-brand text-white"
-              : "rounded-tl-sm bg-bg-subtle text-ink"
-          }`}
+          className={`rounded-2xl text-sm leading-relaxed ${
+            message.media ? "overflow-hidden p-1.5" : "whitespace-pre-line px-4 py-3"
+          } ${isOutbound ? "rounded-tr-sm bg-brand text-white" : "rounded-tl-sm bg-bg-subtle text-ink"}`}
         >
-          {message.text}
+          {message.media && <MessageMedia messageId={message.id} media={message.media} />}
+          {message.media?.caption && <p className="whitespace-pre-line px-2.5 pb-1 pt-2">{message.media.caption}</p>}
+          {!message.media && message.text}
         </div>
         <div className={`flex items-center gap-1 text-xs text-muted ${isOutbound ? "justify-end" : ""}`}>
           {!isOutbound && <span>{formatMessageTime(message.sentAt)}</span>}

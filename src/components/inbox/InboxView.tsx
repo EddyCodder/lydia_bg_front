@@ -5,6 +5,7 @@ import {
   useConversations,
   useMarkConversationRead,
   useMessages,
+  useSendMedia,
   useSendMessage,
   useUpdateConversationContact,
 } from "@/lib/queries/conversations";
@@ -14,6 +15,7 @@ import type { InboxMessage } from "@/lib/lydia-api/inbox-types";
 import { ConversationList } from "./ConversationList";
 import { LeadDetailPanel } from "./LeadDetailPanel";
 import { ChatThread } from "./ChatThread";
+import type { ComposerMediaInput } from "./Composer";
 import { Icon } from "@/components/icons";
 
 function MockModeBanner({ detail }: { detail?: string }) {
@@ -61,6 +63,7 @@ export function InboxView() {
     error: realMessagesError,
   } = useMessages(isMockMode ? null : effectiveSelectedId);
   const sendMessage = useSendMessage(effectiveSelectedId);
+  const sendMedia = useSendMedia(effectiveSelectedId);
   const markConversationRead = useMarkConversationRead();
   const updateContact = useUpdateConversationContact();
 
@@ -95,9 +98,11 @@ export function InboxView() {
     [effectiveSelectedId, mockDrafts],
   );
 
-  const handleSend = (text: string) => {
+  // LYD-14: Composer espera una promesa que se rechaza si el envio falla,
+  // para no borrar el texto ni perder el error en silencio.
+  const handleSend = async (text: string) => {
     if (!isMockMode) {
-      sendMessage.mutate(text);
+      await sendMessage.mutateAsync(text);
       return;
     }
     if (effectiveSelectedId === null) return;
@@ -105,6 +110,28 @@ export function InboxView() {
       id: `draft-${Date.now()}`,
       direction: "outbound",
       text,
+      sentAt: new Date().toISOString(),
+      read: false,
+      senderName: "Mafer",
+    };
+    setMockDrafts((prev) => ({
+      ...prev,
+      [effectiveSelectedId]: [...(prev[effectiveSelectedId] ?? []), draft],
+    }));
+  };
+
+  // LYD-15: en modo mock no hay a quien mandarle el archivo real -- se deja
+  // un draft de texto describiendolo, igual que el resto del mock del inbox.
+  const handleSendMedia = async (input: ComposerMediaInput) => {
+    if (!isMockMode) {
+      await sendMedia.mutateAsync(input);
+      return;
+    }
+    if (effectiveSelectedId === null) return;
+    const draft: InboxMessage = {
+      id: `draft-${Date.now()}`,
+      direction: "outbound",
+      text: `[archivo adjunto: ${input.fileName ?? input.mediatype}]`,
       sentAt: new Date().toISOString(),
       read: false,
       senderName: "Mafer",
@@ -135,8 +162,9 @@ export function InboxView() {
               thread={isMockMode ? mockMessages : realMessages}
               isLoading={isMockMode ? false : realMessagesLoading}
               error={isMockMode ? null : realMessagesError}
-              sending={!isMockMode && sendMessage.isPending}
+              sending={!isMockMode && (sendMessage.isPending || sendMedia.isPending)}
               onSend={handleSend}
+              onSendMedia={handleSendMedia}
               onEditContact={handleEditContact}
             />
           </>
