@@ -73,18 +73,19 @@ export function InboxView() {
     updateContact.mutate({ conversationId: effectiveSelectedId, contactNameOverride: name, contactPhoneOverride: phone });
   };
 
-  // LYD-13: abrir un chat con mensajes sin leer lo marca como leido. Antes
-  // de esto Chat.unreadMessages (Evolution API) nunca se reseteaba, asi que
-  // el badge de "N sin leer" quedaba pegado para siempre, hasta despues de
-  // responder.
+  // LYD-13: abrir un chat con mensajes sin leer lo marca como leido. Ademas
+  // de al cambiar de conversacion, esto tiene que reaccionar a que el
+  // contador suba mientras el chat ya esta abierto (llega un mensaje nuevo
+  // en medio del polling de useConversations) -- si no, el badge quedaba
+  // pegado hasta que el agente cerraba y volvia a abrir el chat.
+  const selectedUnreadCount = selectedConversation?.unreadCount ?? 0;
   useEffect(() => {
     if (isMockMode || effectiveSelectedId === null) return;
-    const conversation = conversations.find((c) => c.id === effectiveSelectedId);
-    if (conversation && conversation.unreadCount > 0) {
+    if (selectedUnreadCount > 0) {
       markConversationRead.mutate(effectiveSelectedId);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo debe disparar al cambiar de conversacion, no en cada refetch de `conversations`
-  }, [effectiveSelectedId, isMockMode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- markConversationRead cambia de identidad en cada render, no debe disparar el efecto por si sola
+  }, [effectiveSelectedId, isMockMode, selectedUnreadCount]);
 
   const mockMessages = useMemo(
     () =>
