@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import type { InboxConversation } from "@/lib/lydia-api/inbox-types";
 import { ConversationListItem } from "./ConversationListItem";
+import { useEscapeKey } from "@/lib/hooks/useEscapeKey";
 
 type StatusFilter = "todos" | "abierto" | "sin_respuesta" | "cerrado";
 
@@ -25,6 +26,7 @@ export function ConversationList({ conversations, isLoading, error, selectedConv
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<StatusFilter>("todos");
   const [filterMenuOpen, setFilterMenuOpen] = useState(false);
+  useEscapeKey(filterMenuOpen, () => setFilterMenuOpen(false));
 
   const filtered = useMemo(() => {
     return conversations.filter((conversation) => {
@@ -60,6 +62,7 @@ export function ConversationList({ conversations, isLoading, error, selectedConv
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             type="text"
+            aria-label="Buscar conversaciones"
             placeholder="Buscar"
             className="w-full rounded-lg border border-line bg-bg-subtle py-2 pl-9 pr-3 text-sm text-ink-soft placeholder:text-muted focus:border-brand focus:outline-none"
           />
@@ -71,6 +74,8 @@ export function ConversationList({ conversations, isLoading, error, selectedConv
           <button
             type="button"
             onClick={() => setFilterMenuOpen((v) => !v)}
+            aria-haspopup="menu"
+            aria-expanded={filterMenuOpen}
             className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-ink-soft hover:bg-bg-subtle"
           >
             {filters.find((f) => f.id === activeFilter)?.label}
@@ -79,11 +84,12 @@ export function ConversationList({ conversations, isLoading, error, selectedConv
             </svg>
           </button>
           {filterMenuOpen && (
-            <div className="absolute left-0 z-10 mt-1 w-40 rounded-md border border-line bg-surface py-1 text-sm shadow-lg">
+            <div role="menu" className="absolute left-0 z-10 mt-1 w-40 rounded-md border border-line bg-surface py-1 text-sm shadow-lg">
               {filters.map((filter) => (
                 <button
                   key={filter.id}
                   type="button"
+                  role="menuitem"
                   onClick={() => {
                     setActiveFilter(filter.id);
                     setFilterMenuOpen(false);

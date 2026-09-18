@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   useConversations,
+  useLoadOlderMessages,
   useMarkConversationRead,
   useMessages,
   useSendMedia,
@@ -66,6 +67,32 @@ export function InboxView() {
   const sendMedia = useSendMedia(effectiveSelectedId);
   const markConversationRead = useMarkConversationRead();
   const updateContact = useUpdateConversationContact();
+  const loadOlderMessages = useLoadOlderMessages(effectiveSelectedId);
+
+  // LYD-17: historial cargado a mano, acumulado por conversacion. Se resetea
+  // al cambiar de chat -- cada conversacion arranca sin nada mas viejo cargado.
+  // hasMoreOlder arranca en true (optimista): recien se sabe si hay mas de
+  // 100 mensajes cuando se intenta cargar la pagina siguiente. El reset pasa
+  // durante el render (patron "adjusting state when a prop changes" de React),
+  // no en un efecto, para no encadenar un render extra.
+  const [olderMessages, setOlderMessages] = useState<InboxMessage[]>([]);
+  const [nextOlderPage, setNextOlderPage] = useState(2); // la pagina 1 ya la trae useMessages
+  const [hasMoreOlder, setHasMoreOlder] = useState(true);
+  const [olderMessagesKey, setOlderMessagesKey] = useState(effectiveSelectedId);
+  if (olderMessagesKey !== effectiveSelectedId) {
+    setOlderMessagesKey(effectiveSelectedId);
+    setOlderMessages([]);
+    setNextOlderPage(2);
+    setHasMoreOlder(true);
+  }
+
+  const handleLoadOlder = async () => {
+    if (isMockMode || effectiveSelectedId === null) return;
+    const { messages, hasMore } = await loadOlderMessages.mutateAsync(nextOlderPage);
+    setOlderMessages((prev) => [...messages, ...prev]);
+    setNextOlderPage((p) => p + 1);
+    setHasMoreOlder(hasMore);
+  };
 
   const handleEditContact = (name: string, phone: string) => {
     if (effectiveSelectedId === null) return;
@@ -159,13 +186,16 @@ export function InboxView() {
             <LeadDetailPanel key={selectedConversation.id} conversation={selectedConversation} />
             <ChatThread
               conversation={selectedConversation}
-              thread={isMockMode ? mockMessages : realMessages}
+              thread={isMockMode ? mockMessages : [...olderMessages, ...realMessages]}
               isLoading={isMockMode ? false : realMessagesLoading}
               error={isMockMode ? null : realMessagesError}
               sending={!isMockMode && (sendMessage.isPending || sendMedia.isPending)}
               onSend={handleSend}
               onSendMedia={handleSendMedia}
               onEditContact={handleEditContact}
+              onLoadOlder={handleLoadOlder}
+              loadingOlder={loadOlderMessages.isPending}
+              hasMoreOlder={!isMockMode && hasMoreOlder && olderMessages.length + realMessages.length >= 100}
             />
           </>
         ) : (

@@ -37,6 +37,19 @@ export function useMessages(conversationId: string | null) {
   });
 }
 
+// LYD-17: los mas recientes (useMessages, arriba) se pollean solos -- el
+// historial mas viejo se pide a mano con esto, pagina por pagina, y el
+// llamador lo va acumulando (no encaja en el polling de react-query porque
+// un refetch normal solo trae la pagina 1 de nuevo).
+export function useLoadOlderMessages(conversationId: string | null) {
+  return useMutation({
+    mutationFn: (page: number) =>
+      fetchJson<{ messages: InboxMessage[]; hasMore: boolean }>(
+        `/api/lydia/conversations/${conversationId}/messages?page=${page}`,
+      ),
+  });
+}
+
 export function useAgents() {
   return useQuery({
     queryKey: ["agents"],

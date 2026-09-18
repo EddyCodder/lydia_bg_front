@@ -9,6 +9,7 @@ import type {
   EvoMediaResult,
   EvoMessage,
   EvoMessagesResponse,
+  EvoNote,
   EvoPersonalInsights,
   EvoQuickReplyTemplate,
   EvoSendMediaInput,
@@ -77,14 +78,19 @@ export async function getConversation(chatId: string): Promise<EvoConversation> 
   return evoFetch<EvoConversation>(`/crm/conversations/${chatId}`);
 }
 
-export async function listMessages(remoteJid: string): Promise<EvoMessage[]> {
+// LYD-17: page fijo en 1 perdia todo el historial mas alla de los ultimos
+// 100 mensajes, sin forma de pedir el resto.
+export async function listMessages(remoteJid: string, page = 1): Promise<{ messages: EvoMessage[]; hasMore: boolean }> {
   const { instanceName } = getConfig();
   const res = await evoFetch<EvoMessagesResponse>(`/chat/findMessages/${instanceName}`, {
     method: "POST",
-    body: JSON.stringify({ where: { key: { remoteJid } }, offset: 100, page: 1 }),
+    body: JSON.stringify({ where: { key: { remoteJid } }, offset: 100, page }),
   });
-  // orden ascendente para el hilo de chat (Evolution devuelve mas nuevo primero)
-  return [...res.messages.records].reverse();
+  return {
+    // orden ascendente para el hilo de chat (Evolution devuelve mas nuevo primero)
+    messages: [...res.messages.records].reverse(),
+    hasMore: res.messages.currentPage < res.messages.pages,
+  };
 }
 
 export async function sendMessage(remoteJid: string, text: string): Promise<void> {
@@ -122,6 +128,19 @@ export async function listAgents(): Promise<EvoAgent[]> {
   return evoFetch<EvoAgent[]>(`/crm/agents`);
 }
 
+// LYD-21: notas internas de la conversacion (listNotes/addNote del backend,
+// existian sin ninguna UI que las consumiera).
+export async function listNotes(chatId: string): Promise<EvoNote[]> {
+  return evoFetch<EvoNote[]>(`/crm/conversations/${chatId}/notes`);
+}
+
+export async function addNote(chatId: string, content: string, agentId: string | null): Promise<EvoNote> {
+  return evoFetch<EvoNote>(`/crm/conversations/${chatId}/notes`, {
+    method: "POST",
+    body: JSON.stringify({ content, agentId: agentId ?? undefined }),
+  });
+}
+
 export async function assignConversation(chatId: string, assignedAgentId: string | null): Promise<EvoConversation> {
   return evoFetch<EvoConversation>(`/crm/conversations/${chatId}`, {
     method: "PATCH",
@@ -153,11 +172,14 @@ export async function updateConversationContact(
 
 // LYD-8: pipeline de leads
 
-export async function listLeads(params: { stage?: LeadStage; assignedAgentId?: string; source?: string } = {}): Promise<EvoLead[]> {
+export async function listLeads(
+  params: { stage?: LeadStage; assignedAgentId?: string; source?: string; chatId?: string } = {},
+): Promise<EvoLead[]> {
   const query = new URLSearchParams();
   if (params.stage) query.set("stage", params.stage);
   if (params.assignedAgentId) query.set("assignedAgentId", params.assignedAgentId);
   if (params.source) query.set("source", params.source);
+  if (params.chatId) query.set("chatId", params.chatId);
   const qs = query.toString();
   return evoFetch<EvoLead[]>(`/crm/leads${qs ? `?${qs}` : ""}`);
 }

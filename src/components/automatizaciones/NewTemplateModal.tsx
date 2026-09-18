@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { TemplateGroup } from "@/lib/types";
+import { useEscapeKey } from "@/lib/hooks/useEscapeKey";
 
 export interface NewTemplateData {
   groupId: string | null; // null = crear grupo nuevo con newGroupTitle
@@ -24,6 +25,8 @@ export function NewTemplateModal({ groups, onClose, onCreate }: Props) {
   const [label, setLabel] = useState("");
   const [body, setBody] = useState("");
 
+  useEscapeKey(true, onClose);
+
   const isNewGroup = groupId === "__new__";
   const canSubmit = command.trim() && label.trim() && body.trim() && (!isNewGroup || newGroupTitle.trim());
 
@@ -42,8 +45,16 @@ export function NewTemplateModal({ groups, onClose, onCreate }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
       <button type="button" aria-label="Cerrar" onClick={onClose} className="absolute inset-0 cursor-default" />
-      <form onSubmit={handleSubmit} className="relative w-full max-w-md rounded-xl bg-surface p-5 shadow-xl">
-        <h2 className="text-base font-semibold text-ink">Nueva plantilla</h2>
+      <form
+        onSubmit={handleSubmit}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="new-template-modal-title"
+        className="relative w-full max-w-md rounded-xl bg-surface p-5 shadow-xl"
+      >
+        <h2 id="new-template-modal-title" className="text-base font-semibold text-ink">
+          Nueva plantilla
+        </h2>
 
         <div className="mt-4 flex flex-col gap-3">
           <div>

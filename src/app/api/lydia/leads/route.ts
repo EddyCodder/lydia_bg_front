@@ -8,9 +8,10 @@ export async function GET(request: Request) {
   const stage = (searchParams.get("stage") as LeadStage | null) ?? undefined;
   const assignedAgentId = searchParams.get("assignedAgentId") ?? undefined;
   const source = searchParams.get("source") ?? undefined;
+  const chatId = searchParams.get("chatId") ?? undefined;
 
   try {
-    const leads = await listLeads({ stage, assignedAgentId, source });
+    const leads = await listLeads({ stage, assignedAgentId, source, chatId });
     return NextResponse.json({ leads: leads.map(adaptLead) });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Error desconocido";

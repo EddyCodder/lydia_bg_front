@@ -4,6 +4,7 @@ import { useState } from "react";
 import { agents } from "@/lib/mock-data";
 import type { CalendarEventType } from "@/lib/types";
 import { Icon } from "@/components/icons";
+import { useEscapeKey } from "@/lib/hooks/useEscapeKey";
 
 const typeOptions: { id: CalendarEventType; label: string; badge?: string }[] = [
   { id: "chat", label: "Chat" },
@@ -34,6 +35,7 @@ interface Props {
 export function TaskQuickCreate({ onCreate }: Props) {
   const [open, setOpen] = useState(false);
   const [typeMenuOpen, setTypeMenuOpen] = useState(false);
+  useEscapeKey(typeMenuOpen, () => setTypeMenuOpen(false));
   const [type, setType] = useState<CalendarEventType>("tarea");
   const [day, setDay] = useState<"hoy" | "mañana">("mañana");
   const [agentId, setAgentId] = useState(agents[0].id);
@@ -65,17 +67,20 @@ export function TaskQuickCreate({ onCreate }: Props) {
         <button
           type="button"
           onClick={() => setTypeMenuOpen((v) => !v)}
+          aria-haspopup="menu"
+          aria-expanded={typeMenuOpen}
           className="mb-2 flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1 text-xs font-medium text-ink-soft hover:bg-bg-subtle"
         >
           {typeOptions.find((t) => t.id === type)?.label}
           <Icon name="chevronDown" size={12} strokeWidth={2} />
         </button>
         {typeMenuOpen && (
-          <div className="absolute left-0 z-10 mt-1 w-40 rounded-md border border-line bg-surface py-1 text-sm shadow-lg">
+          <div role="menu" className="absolute left-0 z-10 mt-1 w-40 rounded-md border border-line bg-surface py-1 text-sm shadow-lg">
             {typeOptions.map((opt) => (
               <button
                 key={opt.id}
                 type="button"
+                role="menuitem"
                 onClick={() => {
                   setType(opt.id);
                   setTypeMenuOpen(false);

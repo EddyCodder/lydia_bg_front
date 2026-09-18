@@ -13,13 +13,14 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   return body as T;
 }
 
-export function useLeads(params: { stage?: PipelineStageId; assignedAgentId?: string } = {}) {
+export function useLeads(params: { stage?: PipelineStageId; assignedAgentId?: string; chatId?: string } = {}) {
   const query = new URLSearchParams();
   if (params.stage) query.set("stage", params.stage);
   if (params.assignedAgentId) query.set("assignedAgentId", params.assignedAgentId);
+  if (params.chatId) query.set("chatId", params.chatId);
 
   return useQuery({
-    queryKey: ["leads", params.stage ?? "all", params.assignedAgentId ?? "all"],
+    queryKey: ["leads", params.stage ?? "all", params.assignedAgentId ?? "all", params.chatId ?? "all"],
     queryFn: () => fetchJson<{ leads: Lead[] }>(`/api/lydia/leads?${query.toString()}`),
     select: (data) => data.leads,
     enabled: LYDIA_API_ENABLED,

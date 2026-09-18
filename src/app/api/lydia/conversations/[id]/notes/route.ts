@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getConversation, listMessages, sendMessage } from "@/lib/lydia-api/client";
-import { adaptMessage } from "@/lib/lydia-api/adapters";
+import { addNote, listNotes } from "@/lib/lydia-api/client";
+import { adaptNote } from "@/lib/lydia-api/adapters";
 
 function errorResponse(error: unknown) {
   const message = error instanceof Error ? error.message : "Error desconocido";
@@ -8,13 +8,11 @@ function errorResponse(error: unknown) {
   return NextResponse.json({ error: message }, { status: isConfigError ? 503 : 502 });
 }
 
-export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const page = Number(new URL(request.url).searchParams.get("page") ?? "1") || 1;
   try {
-    const conversation = await getConversation(id);
-    const { messages, hasMore } = await listMessages(conversation.remoteJid, page);
-    return NextResponse.json({ messages: messages.map(adaptMessage), hasMore });
+    const notes = await listNotes(id);
+    return NextResponse.json({ notes: notes.map(adaptNote) });
   } catch (error) {
     return errorResponse(error);
   }
@@ -30,9 +28,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   }
 
   try {
-    const conversation = await getConversation(id);
-    await sendMessage(conversation.remoteJid, content);
-    return NextResponse.json({ ok: true });
+    const note = await addNote(id, content, typeof body?.agentId === "string" ? body.agentId : null);
+    return NextResponse.json({ note: adaptNote(note) }, { status: 201 });
   } catch (error) {
     return errorResponse(error);
   }

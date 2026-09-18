@@ -4,10 +4,19 @@ import type {
   EvoConversation,
   EvoLead,
   EvoMessage,
+  EvoNote,
   EvoPersonalInsights,
   EvoTemplateGroup,
 } from "./types";
-import type { InboxAgent, InboxContact, InboxConversation, InboxMediaKind, InboxMessage, InboxMessageMedia } from "./inbox-types";
+import type {
+  InboxAgent,
+  InboxContact,
+  InboxConversation,
+  InboxMediaKind,
+  InboxMessage,
+  InboxMessageMedia,
+  InboxNote,
+} from "./inbox-types";
 import type { CalendarEvent, Lead, TemplateGroup } from "@/lib/types";
 
 function jidToPhone(remoteJid: string): string {
@@ -35,6 +44,15 @@ export function adaptAgent(agent: EvoAgent): InboxAgent {
     name: agent.name,
     avatarUrl: "",
     role: agent.role,
+  };
+}
+
+export function adaptNote(note: EvoNote): InboxNote {
+  return {
+    id: note.id,
+    content: note.content,
+    createdAt: note.createdAt,
+    authorName: note.Agent?.name ?? null,
   };
 }
 

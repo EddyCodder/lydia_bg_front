@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Icon } from "@/components/icons";
+import { useEscapeKey } from "@/lib/hooks/useEscapeKey";
 
 interface Props {
   name: string;
@@ -17,6 +18,7 @@ export function EditContactMenu({ name, phone, onSave }: Props) {
   const [open, setOpen] = useState(false);
   const [draftName, setDraftName] = useState(name);
   const [draftPhone, setDraftPhone] = useState(phone);
+  useEscapeKey(open, () => setOpen(false));
 
   const handleOpen = () => {
     setDraftName(name);
@@ -35,13 +37,20 @@ export function EditContactMenu({ name, phone, onSave }: Props) {
         type="button"
         onClick={handleOpen}
         aria-label="Editar contacto"
+        aria-haspopup="dialog"
+        aria-expanded={open}
         className="flex h-8 w-8 items-center justify-center rounded-md text-muted hover:bg-bg-subtle hover:text-ink-soft"
       >
         <Icon name="kebab" size={16} />
       </button>
 
       {open && (
-        <div className="absolute right-0 top-9 z-20 w-64 rounded-lg border border-line bg-surface p-3 shadow-lg">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Editar contacto"
+          className="absolute right-0 top-9 z-20 w-64 rounded-lg border border-line bg-surface p-3 shadow-lg"
+        >
           <p className="text-xs font-semibold uppercase tracking-wide text-muted">Editar contacto</p>
 
           <label className="mt-2 block text-xs font-medium text-ink-soft">

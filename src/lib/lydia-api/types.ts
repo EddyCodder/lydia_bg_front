@@ -25,6 +25,16 @@ export interface EvoContact {
 }
 
 // GET /crm/conversations -- Chat + Agent + contact cruzado a mano en el back
+// GET/POST /crm/conversations/:chatId/notes (LYD-21)
+export interface EvoNote {
+  id: string;
+  chatId: string;
+  agentId: string | null;
+  content: string;
+  createdAt: string;
+  Agent: EvoAgent | null;
+}
+
 export interface EvoConversation {
   id: string;
   remoteJid: string;

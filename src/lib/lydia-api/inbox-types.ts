@@ -35,6 +35,13 @@ export interface InboxMessageMedia {
   raw: { key: unknown; message: unknown };
 }
 
+export interface InboxNote {
+  id: string;
+  content: string;
+  createdAt: string;
+  authorName: string | null;
+}
+
 export interface InboxMessage {
   id: string;
   direction: InboxMessageDirection;

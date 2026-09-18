@@ -11,6 +11,7 @@ import {
 import type { Lead, PipelineStageId } from "@/lib/types";
 import { formatCurrency, formatNumber } from "@/lib/format";
 import { LYDIA_API_ENABLED } from "@/lib/lydia-api/config";
+import { useEscapeKey } from "@/lib/hooks/useEscapeKey";
 import { useCreateLead, useLeads } from "@/lib/queries/leads";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { PipelineColumn } from "./PipelineColumn";
@@ -38,6 +39,8 @@ export function PipelineBoard() {
   const [onlyMine, setOnlyMine] = useState(false);
   const [filterMenuOpen, setFilterMenuOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  useEscapeKey(filterMenuOpen, () => setFilterMenuOpen(false));
+  useEscapeKey(menuOpen, () => setMenuOpen(false));
   const [modalStage, setModalStage] = useState<PipelineStageId | null>(null);
 
   const filteredLeads = useMemo(() => {
@@ -105,6 +108,8 @@ export function PipelineBoard() {
           <button
             type="button"
             onClick={() => setFilterMenuOpen((v) => !v)}
+            aria-haspopup="menu"
+            aria-expanded={filterMenuOpen}
             className={`flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium ${
               onlyMine ? "border-brand/30 bg-brand/10 text-brand-dark" : "border-line text-ink-soft hover:bg-bg-subtle"
             }`}
@@ -115,9 +120,10 @@ export function PipelineBoard() {
             </svg>
           </button>
           {filterMenuOpen && (
-            <div className="absolute left-0 z-10 mt-1 w-44 rounded-md border border-line bg-surface py-1 text-sm shadow-lg">
+            <div role="menu" className="absolute left-0 z-10 mt-1 w-44 rounded-md border border-line bg-surface py-1 text-sm shadow-lg">
               <button
                 type="button"
+                role="menuitem"
                 onClick={() => {
                   setOnlyMine(false);
                   setFilterMenuOpen(false);
@@ -128,6 +134,7 @@ export function PipelineBoard() {
               </button>
               <button
                 type="button"
+                role="menuitem"
                 onClick={() => {
                   setOnlyMine(true);
                   setFilterMenuOpen(false);
@@ -172,6 +179,8 @@ export function PipelineBoard() {
               type="button"
               onClick={() => setMenuOpen((v) => !v)}
               aria-label="Más opciones"
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
               className="flex h-8 w-8 items-center justify-center rounded-md text-muted hover:bg-bg-subtle hover:text-ink-soft"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
@@ -181,9 +190,10 @@ export function PipelineBoard() {
               </svg>
             </button>
             {menuOpen && (
-              <div className="absolute right-0 z-10 mt-1 w-44 rounded-md border border-line bg-surface py-1 text-sm shadow-lg">
+              <div role="menu" className="absolute right-0 z-10 mt-1 w-44 rounded-md border border-line bg-surface py-1 text-sm shadow-lg">
                 <button
                   type="button"
+                  role="menuitem"
                   onClick={() => setMenuOpen(false)}
                   className="block w-full px-3 py-1.5 text-left text-ink-soft hover:bg-bg-subtle"
                 >
@@ -191,6 +201,7 @@ export function PipelineBoard() {
                 </button>
                 <button
                   type="button"
+                  role="menuitem"
                   onClick={() => setMenuOpen(false)}
                   className="block w-full px-3 py-1.5 text-left text-ink-soft hover:bg-bg-subtle"
                 >

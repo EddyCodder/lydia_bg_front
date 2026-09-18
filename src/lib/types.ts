@@ -42,6 +42,7 @@ export interface Lead {
   assignedAgentId: string | null;
   createdAt: string; // ISO, fecha en que entró a su etapa actual
   hasPendingTasks: boolean;
+  chatId?: string; // LYD-20: link opcional a la conversacion de WhatsApp (Chat)
 }
 
 export type MessageDirection = "inbound" | "outbound" | "system";

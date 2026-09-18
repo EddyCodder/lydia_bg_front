@@ -16,6 +16,9 @@ interface Props {
   onSendMedia: (input: ComposerMediaInput) => Promise<void>;
   sending: boolean;
   onEditContact: (name: string, phone: string) => void;
+  onLoadOlder?: () => void;
+  loadingOlder?: boolean;
+  hasMoreOlder?: boolean;
 }
 
 export function ChatThread({
@@ -27,11 +30,23 @@ export function ChatThread({
   onSendMedia,
   sending,
   onEditContact,
+  onLoadOlder,
+  loadingOlder = false,
+  hasMoreOlder = false,
 }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
+  const lastMessageIdRef = useRef<string | null>(null);
 
+  // LYD-17: solo baja el scroll cuando cambia el ULTIMO mensaje (llego uno
+  // nuevo) -- si el efecto disparara con cualquier cambio de `thread`,
+  // cargar mensajes anteriores (que se insertan arriba) tiraria el scroll
+  // hacia abajo de nuevo en vez de mantener la posicion.
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ block: "end" });
+    const lastId = thread.at(-1)?.id ?? null;
+    if (lastId !== lastMessageIdRef.current) {
+      bottomRef.current?.scrollIntoView({ block: "end" });
+      lastMessageIdRef.current = lastId;
+    }
   }, [thread]);
 
   const groups = groupByDay(thread);
@@ -56,6 +71,18 @@ export function ChatThread({
       <div className="scroll-slim flex-1 overflow-y-auto px-6 py-4">
         {isLoading && <p className="text-center text-sm text-muted">Cargando mensajes…</p>}
         {error && <p className="text-center text-sm text-danger">No se pudieron cargar los mensajes: {error.message}</p>}
+        {!isLoading && !error && hasMoreOlder && (
+          <div className="mb-3 flex justify-center">
+            <button
+              type="button"
+              onClick={onLoadOlder}
+              disabled={loadingOlder}
+              className="rounded-full border border-line bg-surface px-3 py-1 text-xs font-semibold text-brand hover:bg-bg-subtle disabled:cursor-wait disabled:opacity-60"
+            >
+              {loadingOlder ? "Cargando…" : "Cargar mensajes anteriores"}
+            </button>
+          </div>
+        )}
         {!isLoading &&
           !error &&
           groups.map((group) => (

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { pipelineStages } from "@/lib/mock-data";
 import type { PipelineStageId } from "@/lib/types";
+import { useEscapeKey } from "@/lib/hooks/useEscapeKey";
 
 interface Props {
   initialStage: PipelineStageId;
@@ -23,6 +24,8 @@ export function NewLeadModal({ initialStage, lockStage, onClose, onCreate }: Pro
   const [source, setSource] = useState("");
   const [budgetAmount, setBudgetAmount] = useState("");
   const [stage, setStage] = useState<PipelineStageId>(initialStage);
+
+  useEscapeKey(true, onClose);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,9 +49,14 @@ export function NewLeadModal({ initialStage, lockStage, onClose, onCreate }: Pro
       />
       <form
         onSubmit={handleSubmit}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="new-lead-modal-title"
         className="relative w-full max-w-sm rounded-xl bg-surface p-5 shadow-xl"
       >
-        <h2 className="text-base font-semibold text-ink">Nuevo lead</h2>
+        <h2 id="new-lead-modal-title" className="text-base font-semibold text-ink">
+          Nuevo lead
+        </h2>
 
         <div className="mt-4 flex flex-col gap-3">
           <div>
