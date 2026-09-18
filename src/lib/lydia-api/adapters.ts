@@ -18,9 +18,13 @@ export function adaptContact(conversation: EvoConversation): InboxContact {
   const contact = conversation.contact;
   return {
     lydiaContactId: contact?.id ?? conversation.remoteJid,
-    name: contact?.pushName || conversation.name || jidToPhone(conversation.remoteJid),
+    // LYD-14: el override manual (Chat.contactNameOverride) gana siempre que
+    // este seteado -- WhatsApp puede estar mandando un nickname/tag en vez
+    // del nombre real, o directamente nada.
+    name:
+      conversation.contactNameOverride || contact?.pushName || conversation.name || jidToPhone(conversation.remoteJid),
     email: null, // WhatsApp no expone email de contacto
-    phone: jidToPhone(conversation.remoteJid),
+    phone: conversation.contactPhoneOverride || jidToPhone(conversation.remoteJid),
     avatarUrl: contact?.profilePicUrl || "",
   };
 }

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { assignConversation, markConversationRead } from "@/lib/lydia-api/client";
+import { assignConversation, markConversationRead, updateConversationContact } from "@/lib/lydia-api/client";
 import { adaptConversation } from "@/lib/lydia-api/adapters";
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -8,15 +8,27 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   const hasAssignedAgentId = "assignedAgentId" in (body ?? {});
   const hasUnreadMessages = "unreadMessages" in (body ?? {});
+  const hasContactOverride = "contactNameOverride" in (body ?? {}) || "contactPhoneOverride" in (body ?? {});
 
-  if (!hasAssignedAgentId && !hasUnreadMessages) {
-    return NextResponse.json({ error: "assignedAgentId o unreadMessages es requerido" }, { status: 400 });
+  if (!hasAssignedAgentId && !hasUnreadMessages && !hasContactOverride) {
+    return NextResponse.json(
+      { error: "assignedAgentId, unreadMessages o contactNameOverride/contactPhoneOverride es requerido" },
+      { status: 400 },
+    );
   }
 
   try {
-    const conversation = hasUnreadMessages
-      ? await markConversationRead(id)
-      : await assignConversation(id, body.assignedAgentId);
+    let conversation;
+    if (hasContactOverride) {
+      conversation = await updateConversationContact(id, {
+        contactNameOverride: body.contactNameOverride,
+        contactPhoneOverride: body.contactPhoneOverride,
+      });
+    } else if (hasUnreadMessages) {
+      conversation = await markConversationRead(id);
+    } else {
+      conversation = await assignConversation(id, body.assignedAgentId);
+    }
     return NextResponse.json({ conversation: adaptConversation(conversation) });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Error desconocido";

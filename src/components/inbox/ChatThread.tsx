@@ -5,6 +5,7 @@ import type { InboxConversation, InboxMessage } from "@/lib/lydia-api/inbox-type
 import { formatMessageDay } from "@/lib/format";
 import { MessageBubble } from "./MessageBubble";
 import { Composer } from "./Composer";
+import { EditContactMenu } from "./EditContactMenu";
 
 interface Props {
   conversation: InboxConversation;
@@ -13,9 +14,10 @@ interface Props {
   error: Error | null;
   onSend: (text: string) => void;
   sending: boolean;
+  onEditContact: (name: string, phone: string) => void;
 }
 
-export function ChatThread({ conversation, thread, isLoading, error, onSend, sending }: Props) {
+export function ChatThread({ conversation, thread, isLoading, error, onSend, sending, onEditContact }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -25,13 +27,20 @@ export function ChatThread({ conversation, thread, isLoading, error, onSend, sen
   const groups = groupByDay(thread);
 
   return (
-    <section className="flex h-full flex-1 flex-col bg-bg-subtle">
+    <section
+      className="flex h-full flex-1 flex-col bg-bg-subtle"
+      onContextMenu={(e) => e.preventDefault()}
+    >
       <header className="flex items-center justify-between border-b border-line-soft bg-surface px-5 py-3">
         <div>
           <p className="text-sm font-semibold text-ink">{conversation.contact.name}</p>
           <p className="text-xs text-muted">{conversation.inboxChannel}</p>
         </div>
-        <span className="text-xs text-muted">Conversación N° {conversation.id}</span>
+        <EditContactMenu
+          name={conversation.contact.name}
+          phone={conversation.contact.phone ?? ""}
+          onSave={onEditContact}
+        />
       </header>
 
       <div className="scroll-slim flex-1 overflow-y-auto px-6 py-4">

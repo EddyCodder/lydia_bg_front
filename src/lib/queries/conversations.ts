@@ -80,6 +80,30 @@ export function useMarkConversationRead() {
   });
 }
 
+export function useUpdateConversationContact() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      conversationId,
+      contactNameOverride,
+      contactPhoneOverride,
+    }: {
+      conversationId: string;
+      contactNameOverride: string;
+      contactPhoneOverride: string;
+    }) =>
+      fetchJson<{ conversation: InboxConversation }>(`/api/lydia/conversations/${conversationId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contactNameOverride, contactPhoneOverride }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["conversations"] });
+    },
+  });
+}
+
 export function useSendMessage(conversationId: string | null) {
   const queryClient = useQueryClient();
 

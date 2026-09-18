@@ -114,6 +114,18 @@ export async function markConversationRead(chatId: string): Promise<EvoConversat
   });
 }
 
+// LYD-14: renombrar/editar el numero mostrado de un contacto (override propio
+// de Lydia, no toca Contact.pushName -- WhatsApp lo pisaria de nuevo).
+export async function updateConversationContact(
+  chatId: string,
+  data: { contactNameOverride?: string | null; contactPhoneOverride?: string | null },
+): Promise<EvoConversation> {
+  return evoFetch<EvoConversation>(`/crm/conversations/${chatId}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
 // LYD-8: pipeline de leads
 
 export async function listLeads(params: { stage?: LeadStage; assignedAgentId?: string; source?: string } = {}): Promise<EvoLead[]> {

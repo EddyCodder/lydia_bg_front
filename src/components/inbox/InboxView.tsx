@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useConversations, useMarkConversationRead, useMessages, useSendMessage } from "@/lib/queries/conversations";
+import {
+  useConversations,
+  useMarkConversationRead,
+  useMessages,
+  useSendMessage,
+  useUpdateConversationContact,
+} from "@/lib/queries/conversations";
 import { getMockMessages, mockInboxConversations } from "@/lib/lydia-api/mock-fallback";
 import { LYDIA_API_ENABLED } from "@/lib/lydia-api/config";
 import type { InboxMessage } from "@/lib/lydia-api/inbox-types";
@@ -27,10 +33,24 @@ function MockModeBanner({ detail }: { detail?: string }) {
 export function InboxView() {
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [mockDrafts, setMockDrafts] = useState<Record<string, InboxMessage[]>>({});
+  // LYD-14: en modo mock (o mientras el backend no responde) el override de
+  // nombre/telefono se guarda solo en memoria -- no hay Chat real donde
+  // persistirlo.
+  const [mockContactOverrides, setMockContactOverrides] = useState<Record<string, { name: string; phone: string }>>(
+    {},
+  );
 
   const { data: realConversations = [], isLoading, error } = useConversations("all");
   const isMockMode = !LYDIA_API_ENABLED || error !== null;
-  const conversations = isMockMode ? mockInboxConversations : realConversations;
+  const conversations = useMemo(() => {
+    const base = isMockMode ? mockInboxConversations : realConversations;
+    if (!isMockMode) return base;
+    return base.map((c) => {
+      const override = mockContactOverrides[c.id];
+      if (!override) return c;
+      return { ...c, contact: { ...c.contact, name: override.name || c.contact.name, phone: override.phone || c.contact.phone } };
+    });
+  }, [isMockMode, realConversations, mockContactOverrides]);
 
   const effectiveSelectedId = selectedConversationId ?? conversations[0]?.id ?? null;
   const selectedConversation = conversations.find((c) => c.id === effectiveSelectedId) ?? null;
@@ -42,6 +62,16 @@ export function InboxView() {
   } = useMessages(isMockMode ? null : effectiveSelectedId);
   const sendMessage = useSendMessage(effectiveSelectedId);
   const markConversationRead = useMarkConversationRead();
+  const updateContact = useUpdateConversationContact();
+
+  const handleEditContact = (name: string, phone: string) => {
+    if (effectiveSelectedId === null) return;
+    if (isMockMode) {
+      setMockContactOverrides((prev) => ({ ...prev, [effectiveSelectedId]: { name, phone } }));
+      return;
+    }
+    updateContact.mutate({ conversationId: effectiveSelectedId, contactNameOverride: name, contactPhoneOverride: phone });
+  };
 
   // LYD-13: abrir un chat con mensajes sin leer lo marca como leido. Antes
   // de esto Chat.unreadMessages (Evolution API) nunca se reseteaba, asi que
@@ -106,6 +136,7 @@ export function InboxView() {
               error={isMockMode ? null : realMessagesError}
               sending={!isMockMode && sendMessage.isPending}
               onSend={handleSend}
+              onEditContact={handleEditContact}
             />
           </>
         ) : (

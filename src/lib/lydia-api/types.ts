@@ -35,6 +35,10 @@ export interface EvoConversation {
   Agent: EvoAgent | null;
   contact: EvoContact | null;
   lastMessage: { content: string; timestamp: number } | null;
+  // LYD-14: override manual, propio de Lydia (ver adaptContact) -- null hasta
+  // que un agente lo edite.
+  contactNameOverride: string | null;
+  contactPhoneOverride: string | null;
 }
 
 // POST /chat/findMessages/:instance -- payload nativo de Evolution API
