@@ -59,19 +59,21 @@ export function InboxView() {
     });
   }, [isMockMode, realConversations, mockContactOverrides]);
 
-  const effectiveSelectedId = selectedConversationId ?? conversations[0]?.id ?? null;
-  const selectedConversation = conversations.find((c) => c.id === effectiveSelectedId) ?? null;
+  // LYD-29: solo se abre el chat que el agente elige. Antes caia a conversations[0], y como abrir un chat con
+  // mensajes sin leer lo marca como leido (LYD-13), entrar al inbox marcaba la primera conversacion como leida
+  // sin que nadie la viera.
+  const selectedConversation = conversations.find((c) => c.id === selectedConversationId) ?? null;
 
   const {
     data: realMessages = [],
     isLoading: realMessagesLoading,
     error: realMessagesError,
-  } = useMessages(isMockMode ? null : effectiveSelectedId);
-  const sendMessage = useSendMessage(effectiveSelectedId);
-  const sendMedia = useSendMedia(effectiveSelectedId);
+  } = useMessages(isMockMode ? null : selectedConversationId);
+  const sendMessage = useSendMessage(selectedConversationId);
+  const sendMedia = useSendMedia(selectedConversationId);
   const markConversationRead = useMarkConversationRead();
   const updateContact = useUpdateConversationContact();
-  const loadOlderMessages = useLoadOlderMessages(effectiveSelectedId);
+  const loadOlderMessages = useLoadOlderMessages(selectedConversationId);
 
   // LYD-17: historial cargado a mano, acumulado por conversacion. Se resetea
   // al cambiar de chat -- cada conversacion arranca sin nada mas viejo cargado.
@@ -82,16 +84,16 @@ export function InboxView() {
   const [olderMessages, setOlderMessages] = useState<InboxMessage[]>([]);
   const [nextOlderPage, setNextOlderPage] = useState(2); // la pagina 1 ya la trae useMessages
   const [hasMoreOlder, setHasMoreOlder] = useState(true);
-  const [olderMessagesKey, setOlderMessagesKey] = useState(effectiveSelectedId);
-  if (olderMessagesKey !== effectiveSelectedId) {
-    setOlderMessagesKey(effectiveSelectedId);
+  const [olderMessagesKey, setOlderMessagesKey] = useState(selectedConversationId);
+  if (olderMessagesKey !== selectedConversationId) {
+    setOlderMessagesKey(selectedConversationId);
     setOlderMessages([]);
     setNextOlderPage(2);
     setHasMoreOlder(true);
   }
 
   const handleLoadOlder = async () => {
-    if (isMockMode || effectiveSelectedId === null) return;
+    if (isMockMode || selectedConversationId === null) return;
     const { messages, hasMore } = await loadOlderMessages.mutateAsync(nextOlderPage);
     setOlderMessages((prev) => [...messages, ...prev]);
     setNextOlderPage((p) => p + 1);
@@ -99,12 +101,12 @@ export function InboxView() {
   };
 
   const handleEditContact = (name: string, phone: string) => {
-    if (effectiveSelectedId === null) return;
+    if (selectedConversationId === null) return;
     if (isMockMode) {
-      setMockContactOverrides((prev) => ({ ...prev, [effectiveSelectedId]: { name, phone } }));
+      setMockContactOverrides((prev) => ({ ...prev, [selectedConversationId]: { name, phone } }));
       return;
     }
-    updateContact.mutate({ conversationId: effectiveSelectedId, contactNameOverride: name, contactPhoneOverride: phone });
+    updateContact.mutate({ conversationId: selectedConversationId, contactNameOverride: name, contactPhoneOverride: phone });
   };
 
   // LYD-13: abrir un chat con mensajes sin leer lo marca como leido. Ademas
@@ -114,19 +116,19 @@ export function InboxView() {
   // pegado hasta que el agente cerraba y volvia a abrir el chat.
   const selectedUnreadCount = selectedConversation?.unreadCount ?? 0;
   useEffect(() => {
-    if (isMockMode || effectiveSelectedId === null) return;
+    if (isMockMode || selectedConversationId === null) return;
     if (selectedUnreadCount > 0) {
-      markConversationRead.mutate(effectiveSelectedId);
+      markConversationRead.mutate(selectedConversationId);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- markConversationRead cambia de identidad en cada render, no debe disparar el efecto por si sola
-  }, [effectiveSelectedId, isMockMode, selectedUnreadCount]);
+  }, [selectedConversationId, isMockMode, selectedUnreadCount]);
 
   const mockMessages = useMemo(
     () =>
-      effectiveSelectedId === null
+      selectedConversationId === null
         ? []
-        : [...getMockMessages(effectiveSelectedId), ...(mockDrafts[effectiveSelectedId] ?? [])],
-    [effectiveSelectedId, mockDrafts],
+        : [...getMockMessages(selectedConversationId), ...(mockDrafts[selectedConversationId] ?? [])],
+    [selectedConversationId, mockDrafts],
   );
 
   // LYD-14: Composer espera una promesa que se rechaza si el envio falla,
@@ -136,7 +138,7 @@ export function InboxView() {
       await sendMessage.mutateAsync(text);
       return;
     }
-    if (effectiveSelectedId === null) return;
+    if (selectedConversationId === null) return;
     const draft: InboxMessage = {
       id: `draft-${Date.now()}`,
       direction: "outbound",
@@ -147,7 +149,7 @@ export function InboxView() {
     };
     setMockDrafts((prev) => ({
       ...prev,
-      [effectiveSelectedId]: [...(prev[effectiveSelectedId] ?? []), draft],
+      [selectedConversationId]: [...(prev[selectedConversationId] ?? []), draft],
     }));
   };
 
@@ -158,7 +160,7 @@ export function InboxView() {
       await sendMedia.mutateAsync(input);
       return;
     }
-    if (effectiveSelectedId === null) return;
+    if (selectedConversationId === null) return;
     const draft: InboxMessage = {
       id: `draft-${Date.now()}`,
       direction: "outbound",
@@ -169,7 +171,7 @@ export function InboxView() {
     };
     setMockDrafts((prev) => ({
       ...prev,
-      [effectiveSelectedId]: [...(prev[effectiveSelectedId] ?? []), draft],
+      [selectedConversationId]: [...(prev[selectedConversationId] ?? []), draft],
     }));
   };
 
@@ -182,7 +184,7 @@ export function InboxView() {
             conversations={conversations}
             isLoading={isMockMode ? false : isLoading}
             error={null}
-            selectedConversationId={effectiveSelectedId}
+            selectedConversationId={selectedConversationId}
             onSelect={(id) => {
               setSelectedConversationId(id);
               setMobileView("thread");
@@ -218,7 +220,11 @@ export function InboxView() {
               mobileView === "list" ? "hidden md:flex" : "flex"
             } flex-1 items-center justify-center text-sm text-muted`}
           >
-            {isLoading && !isMockMode ? "Cargando conversaciones…" : "No hay conversaciones para mostrar."}
+            {isLoading && !isMockMode
+              ? "Cargando conversaciones…"
+              : conversations.length > 0
+                ? "Selecciona una conversación para empezar."
+                : "No hay conversaciones para mostrar."}
           </div>
         )}
       </div>
