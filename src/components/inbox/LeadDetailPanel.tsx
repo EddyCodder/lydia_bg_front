@@ -106,7 +106,7 @@ export function LeadDetailPanel({ conversation }: Props) {
   return (
     <section className="flex h-full w-80 shrink-0 flex-col overflow-y-auto border-r border-line bg-surface p-4">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">LEAD #{conversation.id}</h2>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Detalle del lead</h2>
         <button
           type="button"
           onClick={() => setCollapsed(true)}

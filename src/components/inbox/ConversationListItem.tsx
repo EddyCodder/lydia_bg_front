@@ -32,11 +32,9 @@ export function ConversationListItem({ conversation, active, onClick }: Props) {
 
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
+          {/* LYD-30: sin el id interno de la conversacion (UUID de la base): no lo entienden las asesoras y truncaba el nombre. */}
           <div className="flex min-w-0 items-center gap-1.5">
             <span className="truncate font-semibold text-ink">{contact.name}</span>
-            <span className="shrink-0 rounded bg-brand/10 px-1.5 py-0.5 text-[10px] font-semibold text-brand-dark">
-              #{conversation.id}
-            </span>
           </div>
           <span className="shrink-0 text-xs text-muted">{formatRelativeTime(conversation.lastMessageAt)}</span>
         </div>
