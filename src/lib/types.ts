@@ -97,3 +97,11 @@ export interface CalendarEvent {
   completed?: boolean;
 }
 
+// LYD-35: reemplazo minimo (v1) del Salesbot de Kommo -- solo on/off + texto
+// libre, sin pasos ni ramas. Global (una sola config por deploy de Lydia):
+// el back la resuelve contra la unica instancia de WhatsApp conectada.
+export interface WelcomeMessageConfig {
+  enabled: boolean;
+  message: string;
+}
+

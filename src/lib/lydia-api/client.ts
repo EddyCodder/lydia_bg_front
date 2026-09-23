@@ -15,6 +15,7 @@ import type {
   EvoQuickReplyTemplate,
   EvoSendMediaInput,
   EvoTemplateGroup,
+  EvoWelcomeMessageConfig,
   LeadStage,
 } from "./types";
 
@@ -285,4 +286,28 @@ export async function getPersonalInsights(
   if (params.to) query.set("to", params.to);
   const qs = query.toString();
   return evoFetch<EvoPersonalInsights>(`/crm/insights/personal${qs ? `?${qs}` : ""}`);
+}
+
+// LYD-35: mensaje de bienvenida automatico. Config global de Lydia -- se
+// resuelve server-side contra la unica instancia de WhatsApp/Baileys
+// conectada (mismo canal que implementa el envio en lydia_bg_back), asi el
+// toggle/textarea del front no necesita saber nada de instancias/canales.
+export async function resolveWhatsappInstanceName(): Promise<string | null> {
+  const instances = await listInstances();
+  const whatsapp = instances.find((i) => i.integration === "WHATSAPP-BAILEYS");
+  return whatsapp?.name ?? null;
+}
+
+export async function getWelcomeMessageConfig(instanceName: string): Promise<EvoWelcomeMessageConfig> {
+  return evoFetch<EvoWelcomeMessageConfig>(`/crm/welcome-message?instanceName=${encodeURIComponent(instanceName)}`);
+}
+
+export async function updateWelcomeMessageConfig(
+  instanceName: string,
+  data: { enabled?: boolean; message?: string },
+): Promise<EvoWelcomeMessageConfig> {
+  return evoFetch<EvoWelcomeMessageConfig>(`/crm/welcome-message`, {
+    method: "PATCH",
+    body: JSON.stringify({ instanceName, ...data }),
+  });
 }

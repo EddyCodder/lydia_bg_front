@@ -67,6 +67,13 @@ export interface EvoInstance {
   number: string | null;
 }
 
+// GET/PATCH /crm/welcome-message?instanceName=... -- LYD-35.
+export interface EvoWelcomeMessageConfig {
+  instanceName: string;
+  enabled: boolean;
+  message: string;
+}
+
 // POST /chat/findMessages/:instance -- payload nativo de Evolution API
 export interface EvoMessage {
   id: string;
