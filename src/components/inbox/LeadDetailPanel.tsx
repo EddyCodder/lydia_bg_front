@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { pipelineStages } from "@/lib/mock-data";
 import type { InboxConversation } from "@/lib/lydia-api/inbox-types";
+import { CHANNEL_META } from "@/lib/lydia-api/channel";
 import type { PipelineStageId } from "@/lib/types";
 import { Icon } from "@/components/icons";
 import { LYDIA_API_ENABLED } from "@/lib/lydia-api/config";
@@ -64,7 +65,7 @@ export function LeadDetailPanel({ conversation }: Props) {
     } else {
       createLead.mutate({
         contactName: contact.name,
-        source: conversation.inboxChannel,
+        source: CHANNEL_META[conversation.inboxChannel].label,
         chatId: conversation.id,
         stage: patch.stage,
         budgetAmount: patch.budgetAmount,
@@ -118,7 +119,13 @@ export function LeadDetailPanel({ conversation }: Props) {
         </button>
       </div>
 
-      <p className="mt-2 text-sm font-medium text-brand">{conversation.inboxChannel}</p>
+      <p className="mt-2 flex items-center gap-1.5 text-sm font-medium text-brand">
+        <span
+          className="h-2 w-2 shrink-0 rounded-full"
+          style={{ backgroundColor: CHANNEL_META[conversation.inboxChannel].color }}
+        />
+        {CHANNEL_META[conversation.inboxChannel].label}
+      </p>
       <p className="text-xs text-muted">Canal por donde llegó la conversación</p>
 
       <div className="mt-4">

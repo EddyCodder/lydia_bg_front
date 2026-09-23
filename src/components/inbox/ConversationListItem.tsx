@@ -1,4 +1,5 @@
 import type { InboxConversation } from "@/lib/lydia-api/inbox-types";
+import { CHANNEL_META } from "@/lib/lydia-api/channel";
 import { formatRelativeTime } from "@/lib/format";
 
 interface Props {
@@ -9,6 +10,7 @@ interface Props {
 
 export function ConversationListItem({ conversation, active, onClick }: Props) {
   const { contact } = conversation;
+  const channel = CHANNEL_META[conversation.inboxChannel];
 
   return (
     <button
@@ -27,7 +29,12 @@ export function ConversationListItem({ conversation, active, onClick }: Props) {
             {contact.name.slice(0, 1).toUpperCase()}
           </div>
         )}
-        <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-success" />
+        {/* LYD-31: de que canal es esta conversacion (antes era un punto verde fijo, sin significado). */}
+        <span
+          title={channel.label}
+          className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white"
+          style={{ backgroundColor: channel.color }}
+        />
       </div>
 
       <div className="min-w-0 flex-1">

@@ -34,7 +34,7 @@ export const mockInboxConversations: InboxConversation[] = conversations
       lastMessagePreview: conversation.lastMessagePreview,
       lastMessageAt: conversation.lastMessageAt,
       unreadCount: conversation.unread ? 1 : 0,
-      inboxChannel: "whatsapp (ejemplo)",
+      inboxChannel: "whatsapp",
     };
     return entry;
   })

@@ -54,14 +54,21 @@ export interface InboxMessage {
 
 export type InboxConversationStatus = "abierto" | "sin_respuesta" | "cerrado";
 
+// LYD-31: los tres canales que hoy conecta lydia_bg_back (ver Integration en
+// wa.types.ts del back). "whatsapp" cubre tanto Baileys como Cloud API.
+export type InboxChannel = "whatsapp" | "messenger" | "instagram";
+
 export interface InboxConversation {
   id: string; // Chat.id (cuid) en lydia_bg_back
   remoteJid?: string; // ausente en datos de ejemplo (mock-fallback)
+  // LYD-31: instancia/canal de esta conversacion puntual -- ausente en mock.
+  // Necesaria para pedir mensajes y enviar contra el canal correcto.
+  instanceName?: string;
   contact: InboxContact;
   assignee?: InboxAgent;
   status: InboxConversationStatus;
   lastMessagePreview: string;
   lastMessageAt: string; // ISO
   unreadCount: number;
-  inboxChannel: string;
+  inboxChannel: InboxChannel;
 }

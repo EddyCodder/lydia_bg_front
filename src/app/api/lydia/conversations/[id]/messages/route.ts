@@ -13,7 +13,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const page = Number(new URL(request.url).searchParams.get("page") ?? "1") || 1;
   try {
     const conversation = await getConversation(id);
-    const { messages, hasMore } = await listMessages(conversation.remoteJid, page);
+    const { messages, hasMore } = await listMessages(conversation.remoteJid, conversation.instanceName, page);
     return NextResponse.json({ messages: messages.map(adaptMessage), hasMore });
   } catch (error) {
     return errorResponse(error);
@@ -31,7 +31,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   try {
     const conversation = await getConversation(id);
-    await sendMessage(conversation.remoteJid, content);
+    await sendMessage(conversation.remoteJid, conversation.instanceName, content);
     return NextResponse.json({ ok: true });
   } catch (error) {
     return errorResponse(error);

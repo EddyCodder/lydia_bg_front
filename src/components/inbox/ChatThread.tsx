@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import type { InboxConversation, InboxMessage } from "@/lib/lydia-api/inbox-types";
+import { CHANNEL_META } from "@/lib/lydia-api/channel";
 import { formatMessageDay } from "@/lib/format";
 import { MessageBubble } from "./MessageBubble";
 import { Composer, type ComposerMediaInput } from "./Composer";
@@ -73,7 +74,7 @@ export function ChatThread({
           )}
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-ink">{conversation.contact.name}</p>
-            <p className="text-xs text-muted">{conversation.inboxChannel}</p>
+            <p className="text-xs text-muted">{CHANNEL_META[conversation.inboxChannel].label}</p>
           </div>
         </div>
         <EditContactMenu
@@ -107,7 +108,7 @@ export function ChatThread({
               </div>
               <div className="flex flex-col gap-3">
                 {group.messages.map((message) => (
-                  <MessageBubble key={message.id} message={message} />
+                  <MessageBubble key={message.id} message={message} instanceName={conversation.instanceName ?? ""} />
                 ))}
               </div>
             </div>
