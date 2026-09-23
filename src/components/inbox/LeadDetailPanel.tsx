@@ -7,6 +7,7 @@ import { CHANNEL_META } from "@/lib/lydia-api/channel";
 import type { PipelineStageId } from "@/lib/types";
 import { Icon } from "@/components/icons";
 import { LYDIA_API_ENABLED } from "@/lib/lydia-api/config";
+import { ContactAvatar } from "@/components/ContactAvatar";
 import { useAgents, useAssignAgent } from "@/lib/queries/conversations";
 import { useCreateLead, useLeads, useUpdateLead } from "@/lib/queries/leads";
 import { NotesSection } from "./NotesSection";
@@ -97,8 +98,8 @@ export function LeadDetailPanel({ conversation }: Props) {
         >
           <Icon name="panel" size={16} />
         </button>
-        <div className="mt-4 flex h-9 w-9 items-center justify-center rounded-full bg-line text-sm font-semibold text-ink-soft">
-          {contact.name.slice(0, 1).toUpperCase()}
+        <div className="mt-4">
+          <ContactAvatar seed={contact.lydiaContactId} avatarUrl={contact.avatarUrl} className="h-9 w-9" />
         </div>
       </section>
     );
@@ -172,14 +173,7 @@ export function LeadDetailPanel({ conversation }: Props) {
       </div>
 
       <div className="mt-4 flex items-center gap-2 border-t border-line-soft pt-4">
-        {contact.avatarUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element -- avatar de perfil de WhatsApp, dominio externo
-          <img src={contact.avatarUrl} alt="" className="h-9 w-9 rounded-full object-cover" />
-        ) : (
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-line text-sm font-semibold text-ink-soft">
-            {contact.name.slice(0, 1).toUpperCase()}
-          </div>
-        )}
+        <ContactAvatar seed={contact.lydiaContactId} avatarUrl={contact.avatarUrl} className="h-9 w-9" />
         <div>
           <p className="text-sm font-semibold text-ink">{contact.name}</p>
           <p className="flex items-center gap-1 text-xs text-success">

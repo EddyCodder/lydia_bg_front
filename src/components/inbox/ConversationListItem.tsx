@@ -1,6 +1,7 @@
 import type { InboxConversation } from "@/lib/lydia-api/inbox-types";
 import { CHANNEL_META } from "@/lib/lydia-api/channel";
 import { formatRelativeTime } from "@/lib/format";
+import { ContactAvatar } from "@/components/ContactAvatar";
 
 interface Props {
   conversation: InboxConversation;
@@ -21,14 +22,7 @@ export function ConversationListItem({ conversation, active, onClick }: Props) {
       }`}
     >
       <div className="relative shrink-0">
-        {contact.avatarUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element -- avatar de perfil de WhatsApp, dominio externo sin allowlist configurado todavía
-          <img src={contact.avatarUrl} alt="" className="h-10 w-10 rounded-full object-cover" />
-        ) : (
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted-2 text-sm font-semibold text-white">
-            {contact.name.slice(0, 1).toUpperCase()}
-          </div>
-        )}
+        <ContactAvatar seed={contact.lydiaContactId} avatarUrl={contact.avatarUrl} className="h-10 w-10" />
         {/* LYD-31: de que canal es esta conversacion (antes era un punto verde fijo, sin significado). */}
         <span
           title={channel.label}
