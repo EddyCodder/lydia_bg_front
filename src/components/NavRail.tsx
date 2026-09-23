@@ -77,8 +77,11 @@ function CollapsedItem({
   active: boolean;
   onClick?: () => void;
 }) {
+  // Barra azul (LYD-34): estado activo colapsado se invierte a fondo blanco +
+  // texto de marca, igual que en sga_brittany_front -- mismo criterio que el
+  // expandido, solo que aca no hay lugar para el texto, solo el icono.
   const className = `mx-auto mb-1 flex h-10 w-10 items-center justify-center rounded-md ${
-    active ? "bg-brand/10 text-brand" : "text-ink-soft hover:bg-bg-subtle"
+    active ? "bg-white text-brand" : "text-white/70 hover:bg-white/10 hover:text-white"
   }`;
 
   if (onClick) {
@@ -120,7 +123,9 @@ export function NavRail() {
           key={entry.href}
           href={entry.href}
           className={`mb-1 flex items-center gap-3 rounded-md px-3 py-2 font-semibold ${
-            pathname.startsWith(entry.href) ? "bg-brand/10 text-brand" : "text-ink-soft hover:bg-bg-subtle"
+            pathname.startsWith(entry.href)
+              ? "bg-white/15 text-white"
+              : "text-white/70 hover:bg-white/10 hover:text-white"
           }`}
         >
           <Icon name={entry.icon} />
@@ -151,8 +156,8 @@ export function NavRail() {
           onClick={() => toggleSection(entry)}
           className={
             open
-              ? "flex w-full items-center justify-between px-3 py-1 text-xs font-semibold uppercase tracking-wide text-muted hover:text-ink-soft"
-              : "mb-1 flex w-full items-center gap-3 rounded-md px-3 py-2 text-left font-semibold text-ink-soft hover:bg-bg-subtle"
+              ? "flex w-full items-center justify-between px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white/60 hover:text-white"
+              : "mb-1 flex w-full items-center gap-3 rounded-md px-3 py-2 text-left font-semibold text-white/70 hover:bg-white/10 hover:text-white"
           }
         >
           <span className="flex items-center gap-3">
@@ -175,7 +180,7 @@ export function NavRail() {
                 key={item.href}
                 href={item.href}
                 className={`mb-1 flex items-center gap-3 rounded-md px-3 py-2 ${
-                  active ? "bg-brand/10 font-semibold text-brand" : "text-ink-soft hover:bg-bg-subtle"
+                  active ? "bg-white/15 font-semibold text-white" : "text-white/70 hover:bg-white/10 hover:text-white"
                 }`}
               >
                 <Icon name={item.icon} size={17} />
@@ -189,22 +194,22 @@ export function NavRail() {
 
   return (
     <aside
-      className={`flex h-full flex-col border-r border-line bg-surface ${
+      className={`flex h-full flex-col bg-brand ${
         collapsed ? "w-16" : "w-60"
       } shrink-0 transition-[width]`}
     >
       <div className={`flex items-center gap-2 px-4 py-5 ${collapsed ? "justify-center px-0" : "justify-between"}`}>
         <div className={`flex items-center ${collapsed ? "hidden" : ""}`}>
-          <Image src="/icons/lydia-logo-full.png" alt="Lydia" width={108} height={44} className="rounded-md" />
+          <Image src="/icons/logo_blanco.png" alt="Brittany Group" width={124} height={32} />
         </div>
         <button
           type="button"
           onClick={() => setCollapsed((v) => !v)}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted hover:bg-bg-subtle hover:text-ink"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-white/70 hover:bg-white/10 hover:text-white"
           aria-label="Colapsar navegación"
         >
           {collapsed ? (
-            <Image src="/icons/lydia-mark.png" alt="" width={22} height={22} className="rounded-md" />
+            <Image src="/icons/logo_simple.png" alt="" width={22} height={22} className="rounded-md" />
           ) : (
             <Icon name="panel" size={17} />
           )}
@@ -213,34 +218,34 @@ export function NavRail() {
 
       <nav className="scroll-slim flex-1 overflow-y-auto px-3 pb-4 text-sm">
         {topEntries.map(renderEntry)}
-        <div className="mt-2 border-t border-line-soft pt-2">{bottomEntries.map(renderEntry)}</div>
+        <div className="mt-2 border-t border-white/10 pt-2">{bottomEntries.map(renderEntry)}</div>
       </nav>
 
       {agent && (
-        <div className={`border-t border-line-soft p-3 ${collapsed ? "flex justify-center" : ""}`}>
+        <div className={`border-t border-white/10 p-3 ${collapsed ? "flex justify-center" : ""}`}>
           {collapsed ? (
             <button
               type="button"
               title={`${agent.name} — Cerrar sesión`}
               onClick={() => signOut()}
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-brand/10 text-sm font-semibold text-brand hover:bg-brand/20"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-sm font-semibold text-white hover:bg-white/25"
             >
               {agent.name.charAt(0).toUpperCase()}
             </button>
           ) : (
             <div className="flex items-center gap-2">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand/10 text-sm font-semibold text-brand">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/15 text-sm font-semibold text-white">
                 {agent.name.charAt(0).toUpperCase()}
               </span>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold text-ink">{agent.name}</p>
-                <p className="truncate text-xs text-muted">{agent.email}</p>
+                <p className="truncate text-sm font-semibold text-white">{agent.name}</p>
+                <p className="truncate text-xs text-white/60">{agent.email}</p>
               </div>
               <button
                 type="button"
                 title="Cerrar sesión"
                 onClick={() => signOut()}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted hover:bg-bg-subtle hover:text-ink"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-white/70 hover:bg-white/10 hover:text-white"
               >
                 <Icon name="salir" size={16} />
               </button>
