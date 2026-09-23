@@ -201,14 +201,16 @@ export function NavRail() {
         collapsed ? "w-16" : "w-60"
       } shrink-0 transition-[width]`}
     >
-      <div className={`flex items-center gap-2 px-4 py-5 ${collapsed ? "justify-center px-0" : "justify-between"}`}>
-        <div className={`flex items-center ${collapsed ? "hidden" : ""}`}>
+      <div className={`relative flex items-center justify-center py-5 ${collapsed ? "px-0" : "px-4"}`}>
+        <div className={collapsed ? "hidden" : "flex items-center"}>
           <Image src="/icons/logo_blanco.png" alt="Brittany Group" width={124} height={32} />
         </div>
         <button
           type="button"
           onClick={() => setCollapsed((v) => !v)}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-white/70 hover:bg-white/10 hover:text-white"
+          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-white/70 hover:bg-white/10 hover:text-white ${
+            collapsed ? "" : "absolute right-4 top-1/2 -translate-y-1/2"
+          }`}
           aria-label="Colapsar navegación"
         >
           {collapsed ? (
