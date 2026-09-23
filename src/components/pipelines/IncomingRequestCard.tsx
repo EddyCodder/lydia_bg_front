@@ -1,5 +1,6 @@
 import type { IncomingRequest } from "@/lib/types";
 import { formatLeadCardDate } from "@/lib/format";
+import { ContactAvatar } from "@/components/ContactAvatar";
 
 interface Props {
   request: IncomingRequest;
@@ -9,9 +10,7 @@ export function IncomingRequestCard({ request }: Props) {
   return (
     <div className="flex items-start gap-2.5 border-b border-line-soft px-3 py-2.5 hover:bg-bg-subtle">
       <div className="relative shrink-0">
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted-2 text-xs font-semibold text-white">
-          {request.contactName.slice(0, 1).toUpperCase()}
-        </div>
+        <ContactAvatar seed={request.id} className="h-8 w-8" />
         <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-success" />
       </div>
 

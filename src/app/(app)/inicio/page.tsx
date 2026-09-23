@@ -14,6 +14,7 @@ import type { Lead } from "@/lib/types";
 import { formatCurrency, formatRelativeTime } from "@/lib/format";
 import { Icon, type IconName } from "@/components/icons";
 import { LYDIA_API_ENABLED } from "@/lib/lydia-api/config";
+import { ContactAvatar } from "@/components/ContactAvatar";
 import { useConversations } from "@/lib/queries/conversations";
 import { useLeads } from "@/lib/queries/leads";
 import { useAuth } from "@/components/providers/AuthProvider";
@@ -208,9 +209,11 @@ export default function InicioPage() {
                     className="flex items-center justify-between gap-3 px-4 py-3 text-sm hover:bg-bg-subtle"
                   >
                     <div className="flex min-w-0 items-center gap-3">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted-2 text-xs font-semibold text-white">
-                        {conversation.contact.name.slice(0, 1).toUpperCase()}
-                      </div>
+                      <ContactAvatar
+                        seed={conversation.contact.lydiaContactId}
+                        avatarUrl={conversation.contact.avatarUrl}
+                        className="h-8 w-8"
+                      />
                       <div className="min-w-0">
                         <p className="truncate font-semibold text-ink">{conversation.contact.name}</p>
                         <p className="truncate text-ink-soft">{conversation.lastMessagePreview}</p>
