@@ -20,4 +20,4 @@ VPS de Brittany (`144.91.113.27`), Docker, dominio `crm.brittanygroup.edu.pe`. E
 
 ## Flujo
 
-Igual que el resto del ecosistema Brittany: ningún cambio de código sin ticket `CRM-` primero.
+Igual que el resto del ecosistema Brittany: ningún cambio de código sin ticket `LYD-` primero (prefijo vigente desde 2026-09-17; `CRM-`, hasta CRM-12, queda solo como referencia histórica de tickets ya cerrados).
