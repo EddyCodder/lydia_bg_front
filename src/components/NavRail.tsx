@@ -202,7 +202,7 @@ export function NavRail() {
       } shrink-0 transition-[width]`}
     >
       <div className={`flex items-center gap-2 px-4 py-5 ${collapsed ? "justify-center px-0" : "justify-between"}`}>
-        <div className={`flex items-center ${collapsed ? "hidden" : ""}`}>
+        <div className={`flex items-center ${collapsed ? "hidden" : "ml-1.5"}`}>
           <Image src="/icons/logo_blanco.png" alt="Brittany Group" width={124} height={32} />
         </div>
         <button
