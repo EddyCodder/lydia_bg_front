@@ -22,7 +22,7 @@ function LoginForm() {
     <div className="flex h-full w-full items-center justify-center bg-bg-subtle px-4">
       <div className="w-full max-w-sm rounded-xl border border-line bg-surface p-8 text-center shadow-sm">
         <div className="flex justify-center">
-          <Image src="/icons/lydia-logo-full.png" alt="Lydia" width={140} height={57} priority />
+          <Image src="/icons/logo_azul.png" alt="Brittany Group" width={160} height={42} priority />
         </div>
         <p className="mt-4 text-sm text-ink-soft">
           Bandeja colaborativa de WhatsApp de Brittany Group. Iniciá sesión con tu cuenta @brittanygroup.edu.pe.
