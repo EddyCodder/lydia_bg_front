@@ -49,7 +49,10 @@ const bottomEntries: NavEntry[] = [
     id: "automatizaciones",
     label: "Automatizaciones",
     icon: "rayo",
-    items: [{ label: "Plantillas", href: "/automatizaciones/plantillas", icon: "tabla" }],
+    items: [
+      { label: "Plantillas", href: "/automatizaciones/plantillas", icon: "tabla" },
+      { label: "Mensaje de bienvenida", href: "/automatizaciones/mensaje-bienvenida", icon: "chat" },
+    ],
   },
   {
     type: "section",
