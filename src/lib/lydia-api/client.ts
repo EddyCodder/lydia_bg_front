@@ -5,6 +5,7 @@ import type {
   EvoCalendarEvent,
   EvoCalendarEventType,
   EvoConversation,
+  EvoInstance,
   EvoLead,
   EvoMediaResult,
   EvoMessage,
@@ -27,23 +28,23 @@ import type {
 
 class LydiaApiConfigError extends Error {
   constructor(missing: string) {
-    super(
-      `Falta configurar ${missing}. Copiá .env.example a .env.local y completá EVOLUTION_API_URL, EVOLUTION_API_KEY y EVOLUTION_INSTANCE_NAME.`,
-    );
+    super(`Falta configurar ${missing}. Copiá .env.example a .env.local y completá EVOLUTION_API_URL y EVOLUTION_API_KEY.`);
     this.name = "LydiaApiConfigError";
   }
 }
 
+// LYD-31: EVOLUTION_INSTANCE_NAME (una sola instancia fija) se elimino -- el
+// inbox ahora lista y opera sobre todos los canales/instancias a la vez.
+// Cada llamada instance-scoped (mensajes, envio) recibe el instanceName de
+// la conversacion puntual, no uno global.
 function getConfig() {
   const baseUrl = process.env.EVOLUTION_API_URL;
   const apikey = process.env.EVOLUTION_API_KEY;
-  const instanceName = process.env.EVOLUTION_INSTANCE_NAME;
 
   if (!baseUrl) throw new LydiaApiConfigError("EVOLUTION_API_URL");
   if (!apikey) throw new LydiaApiConfigError("EVOLUTION_API_KEY");
-  if (!instanceName) throw new LydiaApiConfigError("EVOLUTION_INSTANCE_NAME");
 
-  return { baseUrl: baseUrl.replace(/\/$/, ""), apikey, instanceName };
+  return { baseUrl: baseUrl.replace(/\/$/, ""), apikey };
 }
 
 async function evoFetch<T>(path: string, init?: RequestInit): Promise<T> {
@@ -67,11 +68,20 @@ async function evoFetch<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+// LYD-31: sin instanceName lista las conversaciones de todos los canales
+// juntas (el back las mezcla y ordena). Se mantiene el parametro para el
+// filtro por canal (front) que sigue pidiendo el conjunto completo.
 export async function listConversations(status?: ChatStatus): Promise<EvoConversation[]> {
-  const { instanceName } = getConfig();
-  const query = new URLSearchParams({ instanceName });
+  const query = new URLSearchParams();
   if (status) query.set("status", status);
-  return evoFetch<EvoConversation[]>(`/crm/conversations?${query.toString()}`);
+  const qs = query.toString();
+  return evoFetch<EvoConversation[]>(`/crm/conversations${qs ? `?${qs}` : ""}`);
+}
+
+// LYD-31: instancias/canales conectados (WhatsApp, Messenger, Instagram...),
+// via el endpoint nativo de Evolution API -- no hizo falta escribir uno propio.
+export async function listInstances(): Promise<EvoInstance[]> {
+  return evoFetch<EvoInstance[]>(`/instance/fetchInstances`);
 }
 
 export async function getConversation(chatId: string): Promise<EvoConversation> {
@@ -80,8 +90,12 @@ export async function getConversation(chatId: string): Promise<EvoConversation> 
 
 // LYD-17: page fijo en 1 perdia todo el historial mas alla de los ultimos
 // 100 mensajes, sin forma de pedir el resto.
-export async function listMessages(remoteJid: string, page = 1): Promise<{ messages: EvoMessage[]; hasMore: boolean }> {
-  const { instanceName } = getConfig();
+// LYD-31: instanceName ahora es de la conversacion puntual, no un global fijo.
+export async function listMessages(
+  remoteJid: string,
+  instanceName: string,
+  page = 1,
+): Promise<{ messages: EvoMessage[]; hasMore: boolean }> {
   const res = await evoFetch<EvoMessagesResponse>(`/chat/findMessages/${instanceName}`, {
     method: "POST",
     body: JSON.stringify({ where: { key: { remoteJid } }, offset: 100, page }),
@@ -93,8 +107,7 @@ export async function listMessages(remoteJid: string, page = 1): Promise<{ messa
   };
 }
 
-export async function sendMessage(remoteJid: string, text: string): Promise<void> {
-  const { instanceName } = getConfig();
+export async function sendMessage(remoteJid: string, instanceName: string, text: string): Promise<void> {
   await evoFetch(`/message/sendText/${instanceName}`, {
     method: "POST",
     body: JSON.stringify({ number: remoteJid, text }),
@@ -103,8 +116,7 @@ export async function sendMessage(remoteJid: string, text: string): Promise<void
 
 // LYD-15: envio de adjuntos (imagen/documento/video/audio). Evolution API
 // acepta la media como base64 inline en el body, sin necesidad de multipart.
-export async function sendMedia(remoteJid: string, input: EvoSendMediaInput): Promise<void> {
-  const { instanceName } = getConfig();
+export async function sendMedia(remoteJid: string, instanceName: string, input: EvoSendMediaInput): Promise<void> {
   await evoFetch(`/message/sendMedia/${instanceName}`, {
     method: "POST",
     body: JSON.stringify({ number: remoteJid, ...input }),
@@ -116,8 +128,10 @@ export async function sendMedia(remoteJid: string, input: EvoSendMediaInput): Pr
 // vuelo, no queda guardada en ningun lado (no hay S3/MinIO configurado en
 // este deploy). "message" es el {key, message} crudo tal cual vino de
 // listMessages.
-export async function getMediaBase64(message: { key: unknown; message: unknown }): Promise<EvoMediaResult> {
-  const { instanceName } = getConfig();
+export async function getMediaBase64(
+  message: { key: unknown; message: unknown },
+  instanceName: string,
+): Promise<EvoMediaResult> {
   return evoFetch<EvoMediaResult>(`/chat/getBase64FromMediaMessage/${instanceName}`, {
     method: "POST",
     body: JSON.stringify({ message }),

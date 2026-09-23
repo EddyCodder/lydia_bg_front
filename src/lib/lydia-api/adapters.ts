@@ -23,17 +23,36 @@ function jidToPhone(remoteJid: string): string {
   return remoteJid.split("@")[0] ?? remoteJid;
 }
 
+// LYD-31: canal a partir de la integracion de la instancia (ver Integration
+// en wa.types.ts del back). Los dos tipos de instancia de WhatsApp caen en
+// el mismo canal para el inbox -- la distincion Baileys/Cloud API no le
+// importa al agente.
+export function channelFromIntegration(integration: string): InboxConversation["inboxChannel"] {
+  if (integration === "FACEBOOK-MESSENGER") return "messenger";
+  if (integration === "INSTAGRAM") return "instagram";
+  return "whatsapp";
+}
+
 export function adaptContact(conversation: EvoConversation): InboxContact {
   const contact = conversation.contact;
+  const channel = channelFromIntegration(conversation.integration);
+  // LYD-31: el remoteJid de Messenger/Instagram es un id de usuario de Meta
+  // (PSID/IGSID), no un telefono -- mostrarlo como "Telefono" confundia al
+  // agente. Solo WhatsApp tiene telefono real en el jid.
+  const phoneFromJid = channel === "whatsapp" ? jidToPhone(conversation.remoteJid) : null;
   return {
     lydiaContactId: contact?.id ?? conversation.remoteJid,
     // LYD-14: el override manual (Chat.contactNameOverride) gana siempre que
     // este seteado -- WhatsApp puede estar mandando un nickname/tag en vez
     // del nombre real, o directamente nada.
     name:
-      conversation.contactNameOverride || contact?.pushName || conversation.name || jidToPhone(conversation.remoteJid),
-    email: null, // WhatsApp no expone email de contacto
-    phone: conversation.contactPhoneOverride || jidToPhone(conversation.remoteJid),
+      conversation.contactNameOverride ||
+      contact?.pushName ||
+      conversation.name ||
+      phoneFromJid ||
+      jidToPhone(conversation.remoteJid),
+    email: null, // ninguno de los tres canales expone email de contacto
+    phone: conversation.contactPhoneOverride || phoneFromJid,
     avatarUrl: contact?.profilePicUrl || "",
   };
 }
@@ -173,6 +192,8 @@ export function adaptConversation(conversation: EvoConversation): InboxConversat
   return {
     id: conversation.id,
     remoteJid: conversation.remoteJid,
+    // LYD-31: de que instancia es, para pedir mensajes/mandar por el canal correcto.
+    instanceName: conversation.instanceName,
     contact: adaptContact(conversation),
     assignee: conversation.Agent ? adaptAgent(conversation.Agent) : undefined,
     status: deriveStatus(conversation),
@@ -181,6 +202,6 @@ export function adaptConversation(conversation: EvoConversation): InboxConversat
       ? new Date(conversation.lastMessage.timestamp * 1000).toISOString()
       : conversation.updatedAt,
     unreadCount: conversation.unreadMessages,
-    inboxChannel: "whatsapp",
+    inboxChannel: channelFromIntegration(conversation.integration),
   };
 }

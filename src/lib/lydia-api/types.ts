@@ -49,6 +49,22 @@ export interface EvoConversation {
   // que un agente lo edite.
   contactNameOverride: string | null;
   contactPhoneOverride: string | null;
+  // LYD-31: de que instancia/canal es esta conversacion -- necesario para
+  // pedir mensajes/enviar contra el canal correcto, ya que el front ya no
+  // tiene una unica instancia fija.
+  instanceName: string;
+  integration: string;
+}
+
+// GET /instance/fetchInstances -- endpoint nativo de Evolution API, sin
+// tocar. Solo se usan estos campos; el resto (Chatwoot, Proxy, etc.) se
+// ignora en el front.
+export interface EvoInstance {
+  id: string;
+  name: string;
+  integration: string;
+  connectionStatus: string;
+  number: string | null;
 }
 
 // POST /chat/findMessages/:instance -- payload nativo de Evolution API

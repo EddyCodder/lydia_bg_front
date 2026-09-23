@@ -161,14 +161,19 @@ export function useSendMedia(conversationId: string | null) {
 
 // LYD-15: resuelve el base64 de un mensaje de media bajo demanda -- se
 // cachea por messageId asi MessageBubble no vuelve a pedirlo en cada re-render.
-export function useResolveMedia(messageId: string, raw: { key: unknown; message: unknown }, enabled: boolean) {
+export function useResolveMedia(
+  messageId: string,
+  raw: { key: unknown; message: unknown },
+  instanceName: string,
+  enabled: boolean,
+) {
   return useQuery({
     queryKey: ["media", messageId],
     queryFn: () =>
       fetchJson<{ dataUrl: string }>(`/api/lydia/media`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(raw),
+        body: JSON.stringify({ ...raw, instanceName }),
       }),
     select: (data) => data.dataUrl,
     enabled,

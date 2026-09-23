@@ -8,6 +8,7 @@ import { Icon } from "@/components/icons";
 interface Props {
   messageId: string;
   media: InboxMessageMedia;
+  instanceName: string;
 }
 
 // LYD-15: imagen/sticker/audio/video se resuelven solos al pintar el bubble
@@ -16,10 +17,10 @@ interface Props {
 // necesita ver).
 const AUTO_LOAD_KINDS: InboxMessageMedia["kind"][] = ["image", "sticker", "audio", "video"];
 
-export function MessageMedia({ messageId, media }: Props) {
+export function MessageMedia({ messageId, media, instanceName }: Props) {
   const [manualLoad, setManualLoad] = useState(false);
   const enabled = AUTO_LOAD_KINDS.includes(media.kind) || manualLoad;
-  const { data: dataUrl, isLoading, error } = useResolveMedia(messageId, media.raw, enabled);
+  const { data: dataUrl, isLoading, error } = useResolveMedia(messageId, media.raw, instanceName, enabled);
 
   if (error) {
     return <p className="text-xs italic text-danger">No se pudo cargar el archivo{media.fileName ? `: ${media.fileName}` : ""}.</p>;

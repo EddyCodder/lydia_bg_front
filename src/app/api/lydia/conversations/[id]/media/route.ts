@@ -16,7 +16,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   try {
     const conversation = await getConversation(id);
-    await sendMedia(conversation.remoteJid, {
+    await sendMedia(conversation.remoteJid, conversation.instanceName, {
       mediatype,
       media,
       mimetype: body.mimetype,

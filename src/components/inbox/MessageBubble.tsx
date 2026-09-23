@@ -4,9 +4,10 @@ import { MessageMedia } from "./MessageMedia";
 
 interface Props {
   message: InboxMessage;
+  instanceName: string;
 }
 
-export function MessageBubble({ message }: Props) {
+export function MessageBubble({ message, instanceName }: Props) {
   if (message.direction === "system") {
     return (
       <div className="my-2 flex justify-center">
@@ -30,7 +31,7 @@ export function MessageBubble({ message }: Props) {
             message.media ? "overflow-hidden p-1.5" : "whitespace-pre-line px-4 py-3"
           } ${isOutbound ? "rounded-tr-sm bg-brand text-white" : "rounded-tl-sm bg-bg-subtle text-ink"}`}
         >
-          {message.media && <MessageMedia messageId={message.id} media={message.media} />}
+          {message.media && <MessageMedia messageId={message.id} media={message.media} instanceName={instanceName} />}
           {message.media?.caption && <p className="whitespace-pre-line px-2.5 pb-1 pt-2">{message.media.caption}</p>}
           {!message.media && message.text}
         </div>
