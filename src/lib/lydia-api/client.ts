@@ -289,12 +289,18 @@ export async function getPersonalInsights(
 }
 
 // LYD-35: mensaje de bienvenida automatico. Config global de Lydia -- se
-// resuelve server-side contra la unica instancia de WhatsApp/Baileys
-// conectada (mismo canal que implementa el envio en lydia_bg_back), asi el
-// toggle/textarea del front no necesita saber nada de instancias/canales.
+// resuelve server-side contra la instancia de WhatsApp conectada (Baileys/QR
+// o Cloud API -- Brittany Group usa WHATSAPP-BUSINESS, no Baileys; el back
+// implementa el envio en ambos canales, ver whatsapp.business.service.ts y
+// whatsapp.baileys.service.ts), asi el toggle/textarea del front no
+// necesita saber nada de instancias/canales.
 export async function resolveWhatsappInstanceName(): Promise<string | null> {
   const instances = await listInstances();
-  const whatsapp = instances.find((i) => i.integration === "WHATSAPP-BAILEYS");
+  const whatsapp = instances.find(
+    (i) =>
+      (i.integration === "WHATSAPP-BAILEYS" || i.integration === "WHATSAPP-BUSINESS") &&
+      i.connectionStatus === "open",
+  );
   return whatsapp?.name ?? null;
 }
 
