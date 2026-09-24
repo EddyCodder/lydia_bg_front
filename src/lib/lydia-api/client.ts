@@ -15,7 +15,8 @@ import type {
   EvoQuickReplyTemplate,
   EvoSendMediaInput,
   EvoTemplateGroup,
-  EvoWelcomeMessageConfig,
+  EvoBotFlow,
+  EvoBotGraph,
   LeadStage,
 } from "./types";
 
@@ -326,16 +327,20 @@ export async function resolveWhatsappInstanceName(): Promise<string | null> {
   return whatsapp?.name ?? null;
 }
 
-export async function getWelcomeMessageConfig(instanceName: string): Promise<EvoWelcomeMessageConfig> {
-  return evoFetch<EvoWelcomeMessageConfig>(`/crm/welcome-message?instanceName=${encodeURIComponent(instanceName)}`);
+// LYD-48: Bot reemplaza a la pantalla de mensaje de bienvenida -- GET/PUT
+// /crm/bot ya cae solo al mensaje de bienvenida existente si no hay ningun
+// flujo guardado (ver bot.service.ts), asi que el front dejo de hablarle
+// directo a /crm/welcome-message.
+export async function getBotFlow(instanceName: string): Promise<EvoBotFlow> {
+  return evoFetch<EvoBotFlow>(`/crm/bot?instanceName=${encodeURIComponent(instanceName)}`);
 }
 
-export async function updateWelcomeMessageConfig(
+export async function updateBotFlow(
   instanceName: string,
-  data: { enabled?: boolean; message?: string },
-): Promise<EvoWelcomeMessageConfig> {
-  return evoFetch<EvoWelcomeMessageConfig>(`/crm/welcome-message`, {
-    method: "PATCH",
+  data: { enabled?: boolean; graph?: EvoBotGraph },
+): Promise<EvoBotFlow> {
+  return evoFetch<EvoBotFlow>(`/crm/bot`, {
+    method: "PUT",
     body: JSON.stringify({ instanceName, ...data }),
   });
 }

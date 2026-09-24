@@ -68,10 +68,42 @@ export interface EvoInstance {
 }
 
 // GET/PATCH /crm/welcome-message?instanceName=... -- LYD-35.
-export interface EvoWelcomeMessageConfig {
+// GET/PUT /crm/bot?instanceName=... -- LYD-47/48. Mismo shape que
+// bot-flow.validation.ts del back (BotGraph/BotNode/BotEdge).
+export type EvoBotNodeType = "message" | "question";
+
+export interface EvoBotOption {
+  id: string;
+  title: string;
+}
+
+export interface EvoBotNode {
+  id: string;
+  type: EvoBotNodeType;
+  text: string;
+  x: number;
+  y: number;
+  options?: EvoBotOption[];
+}
+
+export interface EvoBotEdge {
+  id: string;
+  from: string;
+  fromOption?: string | null;
+  to: string;
+}
+
+export interface EvoBotGraph {
+  startNodeId: string | null;
+  nodes: EvoBotNode[];
+  edges: EvoBotEdge[];
+}
+
+export interface EvoBotFlow {
   instanceName: string;
   enabled: boolean;
-  message: string;
+  graph: EvoBotGraph;
+  warnings: string[];
 }
 
 // POST /chat/findMessages/:instance -- payload nativo de Evolution API

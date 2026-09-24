@@ -62,7 +62,7 @@ const bottomEntries: NavEntry[] = [
     icon: "rayo",
     items: [
       { label: "Plantillas", href: "/automatizaciones/plantillas", icon: "tabla" },
-      { label: "Mensaje de bienvenida", href: "/automatizaciones/mensaje-bienvenida", icon: "chat" },
+      { label: "Bot", href: "/automatizaciones/bot", icon: "chat" },
     ],
   },
   {
