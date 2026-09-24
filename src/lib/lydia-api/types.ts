@@ -91,6 +91,9 @@ export interface EvoBotEdge {
   from: string;
   fromOption?: string | null;
   to: string;
+  // LYD-51: de que lado del nodo destino entra la conexion en el canvas --
+  // cosmetico, el motor del back nunca lo lee.
+  toHandle?: string | null;
 }
 
 export interface EvoBotGraph {

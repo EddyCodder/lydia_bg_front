@@ -72,13 +72,75 @@ function NodeHeader({ id, label, isStart }: { id: string; label: string; isStart
   );
 }
 
+// Right/Bottom comparten lado con el handle de salida del mensaje
+// (out-right/out-bottom): se reparte el lado en dos puntos fijos para que
+// nunca se superpongan (un solo lugar que cambiar si hace falta ajustarlo).
+const SHARED_SIDE_OFFSET = "30%"; // target
+const SHARED_SIDE_OFFSET_OPPOSITE = "70%"; // source, en el mismo lado
+
+// Top/Left son el unico handle de ese lado (centrado, sin offset).
+const TARGET_SIDES = [
+  { position: Position.Top, id: "t-top", style: undefined },
+  { position: Position.Right, id: "t-right", style: { top: SHARED_SIDE_OFFSET } },
+  { position: Position.Bottom, id: "t-bottom", style: { left: SHARED_SIDE_OFFSET } },
+  { position: Position.Left, id: "t-left", style: undefined },
+];
+
+// LYD-51: entrada en los 4 lados -- antes solo se podia conectar por arriba,
+// lo que forzaba un layout vertical. El id de estos handles nunca se lee
+// (EvoBotEdge no guarda "a que lado" entra la conexion, solo el nodo
+// destino), asi que cuatro ids distintos son puramente cosmeticos, sin
+// impacto en el grafo guardado.
+function TargetHandles({ colorClass }: { colorClass: string }) {
+  return (
+    <>
+      {TARGET_SIDES.map((side) => (
+        <Handle
+          key={side.id}
+          type="target"
+          position={side.position}
+          id={side.id}
+          style={side.style}
+          className={`!h-3 !w-3 !border-2 ${colorClass} !bg-white`}
+        />
+      ))}
+    </>
+  );
+}
+
+// LYD-51: salida en 2 lados (abajo y a la derecha) para poder armar tanto un
+// layout vertical como horizontal -- a diferencia del target, este id SI
+// importa (BotFlowCanvas.flowToGraph lo usa para decidir fromOption), pero
+// como la resolucion ahora es por tipo de nodo (no por el string exacto del
+// id), agregar un segundo handle de salida es seguro.
+function MessageSourceHandles({ colorClass }: { colorClass: string }) {
+  return (
+    <>
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="out-bottom"
+        style={{ left: SHARED_SIDE_OFFSET_OPPOSITE }}
+        className={`!h-3 !w-3 !border-2 ${colorClass} !bg-white`}
+      />
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="out-right"
+        style={{ top: SHARED_SIDE_OFFSET_OPPOSITE }}
+        className={`!h-3 !w-3 !border-2 ${colorClass} !bg-white`}
+      />
+    </>
+  );
+}
+
 export function MessageNode({ id, data, selected }: NodeProps & { data: BotMessageNodeData }) {
   const { updateText } = useBotCanvasActions();
   return (
     <div
       className={`w-64 rounded-lg bg-brand text-white shadow-md ${selected ? "ring-2 ring-white" : ""}`}
     >
-      <Handle type="target" position={Position.Top} className="!h-3 !w-3 !border-2 !border-brand !bg-white" />
+      <TargetHandles colorClass="!border-brand" />
       <NodeHeader id={id} label="Mensaje" isStart={data.isStart} />
       <div className="p-2">
         <textarea
@@ -89,12 +151,7 @@ export function MessageNode({ id, data, selected }: NodeProps & { data: BotMessa
           className="nodrag w-full resize-none rounded-md border border-white/30 bg-white/10 px-2 py-1.5 text-sm text-white placeholder:text-white/50 focus:border-white/60 focus:outline-none"
         />
       </div>
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        id="out"
-        className="!h-3 !w-3 !border-2 !border-brand !bg-white"
-      />
+      <MessageSourceHandles colorClass="!border-brand" />
     </div>
   );
 }
@@ -103,7 +160,7 @@ export function QuestionNode({ id, data, selected }: NodeProps & { data: BotQues
   const { updateText, addOption, updateOption, removeOption } = useBotCanvasActions();
   return (
     <div className={`w-72 rounded-lg bg-accent text-white shadow-md ${selected ? "ring-2 ring-white" : ""}`}>
-      <Handle type="target" position={Position.Top} className="!h-3 !w-3 !border-2 !border-accent !bg-white" />
+      <TargetHandles colorClass="!border-accent" />
       <NodeHeader id={id} label="Pregunta" isStart={data.isStart} />
       <div className="p-2">
         <textarea
