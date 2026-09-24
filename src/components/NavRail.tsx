@@ -6,6 +6,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { Icon, type IconName } from "./icons";
+import packageJson from "../../package.json";
+
+// Version del propio Lydia (front), no confundir con la de lydia_bg_back
+// (fork de Evolution API, versionado aparte segun el upstream). Se lee de
+// package.json para tener una sola fuente de verdad -- bump manual en cada
+// release hasta que haya un proceso de versionado automatico.
+const APP_VERSION = packageJson.version;
 
 type NavLeaf = { type: "leaf"; label: string; href: string; icon: IconName };
 type NavSection = {
@@ -258,6 +265,8 @@ export function NavRail() {
           )}
         </div>
       )}
+
+      {!collapsed && <p className="px-3 pb-2 text-[10px] text-white/40">v{APP_VERSION}</p>}
     </aside>
   );
 }
