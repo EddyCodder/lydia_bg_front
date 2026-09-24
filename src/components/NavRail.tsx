@@ -121,7 +121,7 @@ function UnreadBadge({ count, className = "" }: { count: number; className?: str
     <span
       className={`flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold leading-none text-white ${className}`}
     >
-      {count > 99 ? "99+" : count}
+      {count > 999 ? "999+" : count}
     </span>
   );
 }
@@ -228,6 +228,9 @@ export function NavRail() {
               >
                 <Icon name={item.icon} size={17} />
                 {item.label}
+                {item.href === "/comunicaciones/inbox-chat" && unreadTotal > 0 && (
+                  <UnreadBadge count={unreadTotal} className="ml-auto" />
+                )}
               </Link>
             );
           })}
