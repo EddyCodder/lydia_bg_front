@@ -77,6 +77,8 @@ export function useAssignAgent(conversationId: string | null) {
   });
 }
 
+type ConversationsCache = { conversations: InboxConversation[] };
+
 export function useMarkConversationRead() {
   const queryClient = useQueryClient();
 
@@ -87,7 +89,28 @@ export function useMarkConversationRead() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ unreadMessages: 0 }),
       }),
-    onSuccess: () => {
+    // LYD-45: la burbuja de no leidos esperaba el PATCH (que hace un UPDATE
+    // sobre Message en el back) y despues un refetch completo de la lista --
+    // dos round trips lentos en serie. Se limpia al instante en el cache
+    // (lista del inbox y globo del sidebar comparten la misma query) y el
+    // refetch de onSettled solo confirma.
+    onMutate: async (conversationId) => {
+      await queryClient.cancelQueries({ queryKey: ["conversations"] });
+      const previous = queryClient.getQueriesData<ConversationsCache>({ queryKey: ["conversations"] });
+      queryClient.setQueriesData<ConversationsCache>({ queryKey: ["conversations"] }, (old) =>
+        old
+          ? {
+              ...old,
+              conversations: old.conversations.map((c) => (c.id === conversationId ? { ...c, unreadCount: 0 } : c)),
+            }
+          : old,
+      );
+      return { previous };
+    },
+    onError: (_error, _conversationId, context) => {
+      context?.previous.forEach(([key, data]) => queryClient.setQueryData(key, data));
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["conversations"] });
     },
   });
