@@ -35,7 +35,12 @@ import {
 // modelo de datos (BotGraph) sigue siendo el mismo que ya valida el back.
 
 const NODE_TYPES = { message: MessageNode, question: QuestionNode };
-const OUT_HANDLE = "out"; // handle unico de salida de un nodo "message"
+// LYD-51: un mensaje tiene un solo handle de salida "real", pero el
+// componente lo dibuja en 2 lados (abajo/derecha) para poder armar tanto un
+// layout vertical como horizontal -- cualquiera de los dos representa la
+// misma salida. Al recargar se reconecta siempre a este, aunque se haya
+// guardado usando el otro (no se persiste "de que lado" se dibujo).
+const DEFAULT_MESSAGE_HANDLE = "out-bottom";
 
 function newId(): string {
   return typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `id-${Date.now()}-${Math.random()}`;
@@ -53,16 +58,25 @@ function graphToFlow(graph: EvoBotGraph): { nodes: BotNode[]; edges: Edge[] } {
         ? { text: n.text, isStart: n.id === graph.startNodeId, options: n.options ?? [] }
         : { text: n.text, isStart: n.id === graph.startNodeId },
   }));
+  const nodeTypeById = new Map(graph.nodes.map((n) => [n.id, n.type]));
   const edges: Edge[] = graph.edges.map((e) => ({
     id: e.id,
     source: e.from,
-    sourceHandle: e.fromOption ?? OUT_HANDLE,
+    // fromOption solo existe para nodos "question" (el back lo exige asi);
+    // para "message" siempre es null en los datos guardados, asi que se
+    // reconecta al handle canonico -- ver DEFAULT_MESSAGE_HANDLE.
+    sourceHandle: nodeTypeById.get(e.from) === "question" ? (e.fromOption ?? undefined) : DEFAULT_MESSAGE_HANDLE,
+    // LYD-51: si no hay toHandle guardado (grafo viejo, de antes de esto),
+    // queda undefined y xyflow cae solo al primer handle (t-top) -- mismo
+    // comportamiento de siempre, no rompe nada ya guardado.
+    targetHandle: e.toHandle ?? undefined,
     target: e.to,
   }));
   return { nodes, edges };
 }
 
 function flowToGraph(nodes: BotNode[], edges: Edge[]): EvoBotGraph {
+  const nodeById = new Map(nodes.map((n) => [n.id, n]));
   const startNode = nodes.find((n) => n.data.isStart);
   const graphNodes = nodes.map((n) => {
     const isQuestion = n.type === "question";
@@ -77,12 +91,20 @@ function flowToGraph(nodes: BotNode[], edges: Edge[]): EvoBotGraph {
         : {}),
     };
   });
-  const graphEdges = edges.map((e) => ({
-    id: e.id,
-    from: e.source,
-    fromOption: e.sourceHandle === OUT_HANDLE ? null : e.sourceHandle ?? null,
-    to: e.target,
-  }));
+  const graphEdges = edges.map((e) => {
+    // Se resuelve por el TIPO del nodo origen, no por el string exacto del
+    // handle -- un mensaje ofrece 2 handles de salida (LYD-51) que
+    // representan la misma salida unica, asi que siempre es fromOption null
+    // sin importar cual de los dos se uso para conectar.
+    const isQuestionSource = nodeById.get(e.source)?.type === "question";
+    return {
+      id: e.id,
+      from: e.source,
+      fromOption: isQuestionSource ? (e.sourceHandle ?? null) : null,
+      to: e.target,
+      toHandle: e.targetHandle ?? null,
+    };
+  });
   return { startNodeId: startNode?.id ?? null, nodes: graphNodes, edges: graphEdges };
 }
 
@@ -124,18 +146,21 @@ function CanvasInner() {
       // sentido en el flujo (mismo criterio que el editor de lista, que
       // ni mostraba el paso actual en su propio selector "Lleva a").
       if (connection.source === connection.target) return;
+      const isMessageSource = nodes.find((n) => n.id === connection.source)?.type === "message";
       setEdges((eds) => {
-        // Una sola salida por handle (boton de pregunta, o el unico del
-        // mensaje) -- misma regla que ya valida el back. Conectar de nuevo
-        // reemplaza la conexion anterior de ese handle.
-        const withoutOld = eds.filter(
-          (e) => !(e.source === connection.source && e.sourceHandle === connection.sourceHandle),
-        );
+        // Una sola salida real por nodo "message" (aunque tenga 2 handles
+        // visuales, LYD-51: cualquiera de los dos reemplaza al otro) o por
+        // boton de una pregunta -- misma regla que ya valida el back.
+        const withoutOld = eds.filter((e) => {
+          if (e.source !== connection.source) return true;
+          if (isMessageSource) return false;
+          return e.sourceHandle !== connection.sourceHandle;
+        });
         return addEdge({ ...connection, id: newId() }, withoutOld);
       });
       markDirty();
     },
-    [setEdges, markDirty],
+    [setEdges, markDirty, nodes],
   );
 
   const addNode = (type: EvoBotNodeType) => {
