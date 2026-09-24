@@ -2,6 +2,7 @@ import type { InboxConversation } from "@/lib/lydia-api/inbox-types";
 import { CHANNEL_META } from "@/lib/lydia-api/channel";
 import { formatRelativeTime } from "@/lib/format";
 import { ContactAvatar } from "@/components/ContactAvatar";
+import { ConversationRowMenu } from "./ConversationRowMenu";
 
 interface Props {
   conversation: InboxConversation;
@@ -14,10 +15,22 @@ export function ConversationListItem({ conversation, active, onClick }: Props) {
   const channel = CHANNEL_META[conversation.inboxChannel];
 
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
-      className={`flex w-full items-start gap-3 border-b border-line-soft px-4 py-3 text-left transition-colors ${
+      onKeyDown={(e) => {
+        // Sin este chequeo, Enter/Espacio en el boton de 3 puntos (adentro
+        // de esta fila) burbujeaba hasta aca y seleccionaba la conversacion
+        // en vez de abrir el menu -- el kebab quedaba inalcanzable por
+        // teclado (LYD-40).
+        if (e.target !== e.currentTarget) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick();
+        }
+      }}
+      className={`group flex w-full items-start gap-3 border-b border-line-soft px-4 py-3 text-left transition-colors ${
         active ? "bg-brand/10" : "hover:bg-bg-subtle"
       }`}
     >
@@ -37,7 +50,13 @@ export function ConversationListItem({ conversation, active, onClick }: Props) {
           <div className="flex min-w-0 items-center gap-1.5">
             <span className="truncate font-semibold text-ink">{contact.name}</span>
           </div>
-          <span className="shrink-0 text-xs text-muted">{formatRelativeTime(conversation.lastMessageAt)}</span>
+          <div className="flex shrink-0 items-center gap-1">
+            <span className="text-xs text-muted">{formatRelativeTime(conversation.lastMessageAt)}</span>
+            {/* LYD-40: solo visible al pasar el mouse (o con foco por teclado) -- no siempre presente. */}
+            <div className="opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+              <ConversationRowMenu conversationId={conversation.id} />
+            </div>
+          </div>
         </div>
         <p
           className={`mt-1 truncate text-sm ${
@@ -53,6 +72,6 @@ export function ConversationListItem({ conversation, active, onClick }: Props) {
           {conversation.unreadCount}
         </span>
       )}
-    </button>
+    </div>
   );
 }

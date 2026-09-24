@@ -14,6 +14,12 @@ export interface SessionPayload {
   agentId: string;
   email: string;
   name: string;
+  // LYD-40: hacia falta para gatear Eliminar conversacion (solo
+  // administrador) del lado del servidor, no solo esconder el boton en el
+  // cliente. Antes no viajaba en el JWT -- el GET de /api/auth/session (el
+  // que corre en cada carga de pagina, a diferencia del POST de login) lo
+  // devolvia undefined siempre.
+  role: string;
 }
 
 function getSecretKey() {
@@ -35,10 +41,18 @@ export async function createSessionCookie(payload: SessionPayload): Promise<stri
 export async function verifySessionCookie(token: string): Promise<SessionPayload | null> {
   try {
     const { payload } = await jwtVerify(token, getSecretKey());
-    if (typeof payload.agentId !== "string" || typeof payload.email !== "string" || typeof payload.name !== "string") {
+    if (
+      typeof payload.agentId !== "string" ||
+      typeof payload.email !== "string" ||
+      typeof payload.name !== "string" ||
+      typeof payload.role !== "string"
+    ) {
+      // Sesiones firmadas antes de LYD-40 no tienen role -- se invalidan y
+      // el agente vuelve a loguearse una vez, no queda una sesion a medias
+      // sin role para gatear Eliminar.
       return null;
     }
-    return { agentId: payload.agentId, email: payload.email, name: payload.name };
+    return { agentId: payload.agentId, email: payload.email, name: payload.name, role: payload.role };
   } catch {
     return null;
   }

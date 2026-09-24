@@ -66,6 +66,14 @@ async function evoFetch<T>(path: string, init?: RequestInit): Promise<T> {
     throw new Error(`Lydia API ${res.status} en ${path}: ${body.slice(0, 300)}`);
   }
 
+  // LYD-40: los DELETE (deleteLead/deleteTemplate/deleteCalendarEvent y
+  // ahora deleteConversation) devuelven 204 sin body -- res.json() tira
+  // SyntaxError sobre un body vacio, asi que sin este chequeo todo caller
+  // tipado como Promise<void> quedaba roto en runtime.
+  if (res.status === 204) {
+    return undefined as T;
+  }
+
   return res.json() as Promise<T>;
 }
 
@@ -183,6 +191,20 @@ export async function updateConversationContact(
     method: "PATCH",
     body: JSON.stringify(data),
   });
+}
+
+// LYD-40: "cerrar" = archivar (reversible, se oculta de la lista principal).
+export async function archiveConversation(chatId: string, archived: boolean): Promise<EvoConversation> {
+  return evoFetch<EvoConversation>(`/crm/conversations/${chatId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ archived }),
+  });
+}
+
+// LYD-40: borrado real (Chat + mensajes), irreversible -- el gateo por rol
+// (solo administrador) vive en el route handler que llama a esto, no aca.
+export async function deleteConversation(chatId: string): Promise<void> {
+  await evoFetch<void>(`/crm/conversations/${chatId}`, { method: "DELETE" });
 }
 
 // LYD-8: pipeline de leads
