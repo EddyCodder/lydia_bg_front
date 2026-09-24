@@ -21,3 +21,13 @@ VPS de Brittany (`144.91.113.27`), Docker, dominio `crm.brittanygroup.edu.pe`. E
 ## Flujo
 
 Igual que el resto del ecosistema Brittany: ningún cambio de código sin ticket `LYD-` primero (prefijo vigente desde 2026-09-17; `CRM-`, hasta CRM-12, queda solo como referencia histórica de tickets ya cerrados).
+
+## Versionamiento
+
+La versión de este front vive en `package.json` (`version`) y se ve al pie del sidebar (`NavRail.tsx`). Regla: **todo cambio que se despliega sube la versión, en el mismo PR**, según su tamaño:
+
+- **Pequeño** (ajuste visual, texto, bugfix acotado) → sube el último número (patch): `0.0.2` → `0.0.3`.
+- **Medio** (funcionalidad nueva acotada, una pantalla o flujo nuevo) → sube el del medio y resetea el último (minor): `0.0.3` → `0.1.0`.
+- **Grande** (rediseño, cambio que rompe algo existente, ej. invalidar sesiones) → sube el primero y resetea los demás (major): `0.1.0` → `1.0.0`.
+
+Arrancó en `0.0.1` (2026-09-24) por estar todavía en desarrollo activo. Es la versión del front; `lydia_bg_back` (fork de Evolution API) se versiona aparte, según su upstream. Si dudás entre dos niveles, elegí el mayor.
