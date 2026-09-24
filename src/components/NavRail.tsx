@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/components/providers/AuthProvider";
+import { useConversations } from "@/lib/queries/conversations";
 import { Icon, type IconName } from "./icons";
 import packageJson from "../../package.json";
 
@@ -21,6 +22,8 @@ type NavSection = {
   label: string;
   icon: IconName;
   items: { label: string; href: string; icon: IconName }[];
+  // LYD-43: seccion siempre desplegada, sin chevron ni forma de colapsarla.
+  alwaysOpen?: boolean;
 };
 type NavEntry = NavLeaf | NavSection;
 
@@ -31,6 +34,7 @@ const topEntries: NavEntry[] = [
     id: "comunicaciones",
     label: "Comunicaciones",
     icon: "chat",
+    alwaysOpen: true,
     items: [
       { label: "Inbox de chat", href: "/comunicaciones/inbox-chat", icon: "chat" },
       { label: "Inbox de correo", href: "/comunicaciones/inbox-correo", icon: "correo" },
@@ -79,12 +83,14 @@ function CollapsedItem({
   label,
   icon,
   active,
+  badge,
   onClick,
 }: {
   href: string;
   label: string;
   icon: IconName;
   active: boolean;
+  badge?: number;
   onClick?: () => void;
 }) {
   // Barra azul (LYD-34): estado activo colapsado se invierte a fondo blanco +
@@ -96,8 +102,9 @@ function CollapsedItem({
 
   if (onClick) {
     return (
-      <button type="button" title={label} onClick={onClick} className={className}>
+      <button type="button" title={label} onClick={onClick} className={`${className} relative`}>
         <Icon name={icon} />
+        {badge ? <UnreadBadge count={badge} className="absolute -right-1 -top-1" /> : null}
       </button>
     );
   }
@@ -108,13 +115,31 @@ function CollapsedItem({
   );
 }
 
+// LYD-43: globo de mensajes no leidos del sidebar.
+function UnreadBadge({ count, className = "" }: { count: number; className?: string }) {
+  return (
+    <span
+      className={`flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold leading-none text-white ${className}`}
+    >
+      {count > 99 ? "99+" : count}
+    </span>
+  );
+}
+
 export function NavRail() {
   const pathname = usePathname();
   const { agent, signOut } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const [manualToggle, setManualToggle] = useState<Record<string, boolean>>({});
 
+  // LYD-43: total de no leidos -- misma query que el inbox (se pollea cada
+  // 15s, no agrega requests aparte cuando el inbox esta abierto).
+  const { data: conversations } = useConversations();
+  const unreadTotal = (conversations ?? []).reduce((sum, c) => sum + c.unreadCount, 0);
+  const badgeFor = (section: NavSection) => (section.id === "comunicaciones" ? unreadTotal : 0);
+
   const isSectionOpen = (section: NavSection) => {
+    if (section.alwaysOpen) return true;
     if (section.id in manualToggle) return manualToggle[section.id];
     return section.items.some((item) => pathname.startsWith(item.href));
   };
@@ -154,6 +179,7 @@ export function NavRail() {
           label={entry.label}
           icon={entry.icon}
           active={entry.items.some((item) => pathname.startsWith(item.href))}
+          badge={badgeFor(entry)}
           onClick={() => setCollapsed(false)}
         />
       );
@@ -161,26 +187,33 @@ export function NavRail() {
 
     return (
       <div key={entry.id} className="mt-2">
-        <button
-          type="button"
-          onClick={() => toggleSection(entry)}
-          className={
-            open
-              ? "flex w-full items-center justify-between px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white/60 hover:text-white"
-              : "mb-1 flex w-full items-center gap-3 rounded-md px-3 py-2 text-left font-semibold text-white/70 hover:bg-white/10 hover:text-white"
-          }
-        >
-          <span className="flex items-center gap-3">
-            {!open && <Icon name={entry.icon} />}
-            {entry.label}
-          </span>
-          <Icon
-            name="chevronDown"
-            size={14}
-            strokeWidth={2}
-            className={`shrink-0 transition-transform ${open ? "" : "-rotate-90"}`}
-          />
-        </button>
+        {entry.alwaysOpen ? (
+          <div className="flex w-full items-center justify-between px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white/60">
+            <span>{entry.label}</span>
+            {badgeFor(entry) > 0 && <UnreadBadge count={badgeFor(entry)} />}
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => toggleSection(entry)}
+            className={
+              open
+                ? "flex w-full items-center justify-between px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white/60 hover:text-white"
+                : "mb-1 flex w-full items-center gap-3 rounded-md px-3 py-2 text-left font-semibold text-white/70 hover:bg-white/10 hover:text-white"
+            }
+          >
+            <span className="flex items-center gap-3">
+              {!open && <Icon name={entry.icon} />}
+              {entry.label}
+            </span>
+            <Icon
+              name="chevronDown"
+              size={14}
+              strokeWidth={2}
+              className={`shrink-0 transition-transform ${open ? "" : "-rotate-90"}`}
+            />
+          </button>
+        )}
 
         {open &&
           entry.items.map((item) => {
