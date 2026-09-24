@@ -190,7 +190,6 @@ export function NavRail() {
         {entry.alwaysOpen ? (
           <div className="flex w-full items-center justify-between px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white/60">
             <span>{entry.label}</span>
-            {badgeFor(entry) > 0 && <UnreadBadge count={badgeFor(entry)} />}
           </div>
         ) : (
           <button
