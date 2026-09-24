@@ -71,7 +71,7 @@ export interface Conversation {
 export interface TemplateGroup {
   id: string;
   title: string;
-  templates: { command: string; label: string; body: string }[];
+  templates: { id?: string; command: string; label: string; body: string }[]; // id ausente solo en datos mock
 }
 
 export interface IncomingRequest {
