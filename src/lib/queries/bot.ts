@@ -1,8 +1,14 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { WelcomeMessageConfig } from "@/lib/types";
+import type { EvoBotGraph } from "@/lib/lydia-api/types";
 import { LYDIA_API_ENABLED } from "@/lib/lydia-api/config";
+
+interface BotFlowResponse {
+  enabled: boolean;
+  graph: EvoBotGraph;
+  warnings: string[];
+}
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, init);
@@ -13,29 +19,29 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   return body as T;
 }
 
-export function useWelcomeMessageConfig() {
+export function useBotFlow() {
   return useQuery({
-    queryKey: ["welcomeMessageConfig"],
-    queryFn: () => fetchJson<{ config: WelcomeMessageConfig }>(`/api/lydia/welcome-message`),
-    select: (data) => data.config,
+    queryKey: ["botFlow"],
+    queryFn: () => fetchJson<{ flow: BotFlowResponse }>(`/api/lydia/bot`),
+    select: (data) => data.flow,
     enabled: LYDIA_API_ENABLED,
     retry: false,
     staleTime: 60_000,
   });
 }
 
-export function useUpdateWelcomeMessageConfig() {
+export function useUpdateBotFlow() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: Partial<WelcomeMessageConfig>) =>
-      fetchJson<{ config: WelcomeMessageConfig }>(`/api/lydia/welcome-message`, {
-        method: "PATCH",
+    mutationFn: (data: { enabled?: boolean; graph?: EvoBotGraph }) =>
+      fetchJson<{ flow: BotFlowResponse }>(`/api/lydia/bot`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["welcomeMessageConfig"] });
+      queryClient.invalidateQueries({ queryKey: ["botFlow"] });
     },
   });
 }
