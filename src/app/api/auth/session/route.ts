@@ -36,7 +36,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Tu cuenta no esta habilitada en Lydia" }, { status: 403 });
   }
 
-  const token = await createSessionCookie({ agentId: agent.id, email: agent.email ?? identity.email, name: agent.name });
+  const token = await createSessionCookie({
+    agentId: agent.id,
+    email: agent.email ?? identity.email,
+    name: agent.name,
+    role: agent.role,
+  });
   const response = NextResponse.json({ agent: { id: agent.id, email: agent.email, name: agent.name, role: agent.role } });
   response.cookies.set(SESSION_COOKIE_NAME, token, {
     httpOnly: true,
@@ -53,7 +58,9 @@ export async function GET() {
   if (!session) {
     return NextResponse.json({ error: "No hay sesion activa" }, { status: 401 });
   }
-  return NextResponse.json({ agent: { id: session.agentId, email: session.email, name: session.name } });
+  return NextResponse.json({
+    agent: { id: session.agentId, email: session.email, name: session.name, role: session.role },
+  });
 }
 
 export async function DELETE() {

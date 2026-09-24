@@ -93,6 +93,37 @@ export function useMarkConversationRead() {
   });
 }
 
+// LYD-40: "cerrar" = archivar (reversible, se oculta de la lista principal).
+export function useArchiveConversation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (conversationId: string) =>
+      fetchJson<{ conversation: InboxConversation }>(`/api/lydia/conversations/${conversationId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ archived: true }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["conversations"] });
+    },
+  });
+}
+
+// LYD-40: borrado real, irreversible -- el route handler rechaza esto si
+// el agente logueado no es administrador (no alcanza con esconder el boton).
+export function useDeleteConversation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (conversationId: string) =>
+      fetchJson<void>(`/api/lydia/conversations/${conversationId}`, { method: "DELETE" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["conversations"] });
+    },
+  });
+}
+
 export function useUpdateConversationContact() {
   const queryClient = useQueryClient();
 
