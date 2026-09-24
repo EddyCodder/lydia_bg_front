@@ -233,6 +233,8 @@ export function NavRail() {
         <div className="mt-2 border-t border-white/10 pt-2">{bottomEntries.map(renderEntry)}</div>
       </nav>
 
+      {!collapsed && <p className="pb-1 text-center text-[10px] text-white/40">v{APP_VERSION}</p>}
+
       {agent && (
         <div className={`border-t border-white/10 p-3 ${collapsed ? "flex justify-center" : ""}`}>
           {collapsed ? (
@@ -265,8 +267,6 @@ export function NavRail() {
           )}
         </div>
       )}
-
-      {!collapsed && <p className="px-3 pb-2 text-[10px] text-white/40">v{APP_VERSION}</p>}
     </aside>
   );
 }
