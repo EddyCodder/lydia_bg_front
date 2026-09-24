@@ -4,11 +4,19 @@ import { useMemo, useState } from "react";
 import { templateGroups as mockTemplateGroups } from "@/lib/mock-data";
 import type { TemplateGroup } from "@/lib/types";
 import { LYDIA_API_ENABLED } from "@/lib/lydia-api/config";
-import { useCreateTemplate, useCreateTemplateGroup, useTemplateGroups } from "@/lib/queries/template-groups";
+import {
+  useCreateTemplate,
+  useCreateTemplateGroup,
+  useTemplateGroups,
+  useUpdateTemplate,
+} from "@/lib/queries/template-groups";
 import { NewTemplateModal, type NewTemplateData } from "./NewTemplateModal";
+import { EditTemplateModal, type EditTemplateData } from "./EditTemplateModal";
 
 interface Row {
   key: string;
+  id?: string; // ausente en datos mock
+  groupId: string;
   groupTitle: string;
   command: string;
   label: string;
@@ -19,6 +27,8 @@ function flatten(groups: TemplateGroup[]): Row[] {
   return groups.flatMap((group) =>
     group.templates.map((t) => ({
       key: `${group.id}-${t.command}`,
+      id: t.id,
+      groupId: group.id,
       groupTitle: group.title,
       command: t.command,
       label: t.label,
@@ -32,6 +42,7 @@ export function PlantillasTable() {
   const isMockMode = !LYDIA_API_ENABLED || groupsError !== null;
   const createGroup = useCreateTemplateGroup();
   const createTemplate = useCreateTemplate();
+  const updateTemplate = useUpdateTemplate();
 
   // Modo mock: mismo estado local editable que antes de LYD-10, pero sobre
   // el modelo real (TemplateGroup/QuickReplyTemplate) -- ya no existe
@@ -43,6 +54,8 @@ export function PlantillasTable() {
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [modalOpen, setModalOpen] = useState(false);
+  // LYD-46: fila seleccionada para editar.
+  const [editing, setEditing] = useState<Row | null>(null);
 
   const allSelected = selected.size > 0 && selected.size === rows.length;
 
@@ -83,6 +96,24 @@ export function PlantillasTable() {
     setModalOpen(false);
   };
 
+  const handleEdit = async (data: EditTemplateData) => {
+    if (!editing) return;
+    if (isMockMode) {
+      setMockGroups((prev) =>
+        prev.map((g) =>
+          g.id === editing.groupId
+            ? { ...g, templates: g.templates.map((t) => (t.command === editing.command ? { ...t, ...data } : t)) }
+            : g,
+        ),
+      );
+      setEditing(null);
+      return;
+    }
+    if (!editing.id) throw new Error("La plantilla no tiene id, recargá la página e intentá de nuevo");
+    await updateTemplate.mutateAsync({ id: editing.id, ...data });
+    setEditing(null);
+  };
+
   return (
     <section className="scroll-slim flex h-full flex-1 flex-col overflow-y-auto bg-bg px-8 py-6">
       <div className="flex items-center justify-between">
@@ -118,8 +149,20 @@ export function PlantillasTable() {
               </tr>
             )}
             {rows.map((row) => (
-              <tr key={row.key} className="hover:bg-bg-subtle">
-                <td className="border-b border-line-soft py-2.5 pl-4">
+              <tr
+                key={row.key}
+                tabIndex={0}
+                onClick={() => setEditing(row)}
+                onKeyDown={(e) => {
+                  if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
+                    e.preventDefault();
+                    setEditing(row);
+                  }
+                }}
+                title="Click para editar"
+                className="cursor-pointer hover:bg-bg-subtle focus:bg-bg-subtle focus:outline-none"
+              >
+                <td className="border-b border-line-soft py-2.5 pl-4" onClick={(e) => e.stopPropagation()}>
                   <input
                     type="checkbox"
                     checked={selected.has(row.key)}
@@ -144,6 +187,14 @@ export function PlantillasTable() {
       </div>
 
       {modalOpen && <NewTemplateModal groups={groups} onClose={() => setModalOpen(false)} onCreate={handleCreate} />}
+      {editing && (
+        <EditTemplateModal
+          groupTitle={editing.groupTitle}
+          initial={{ command: editing.command, label: editing.label, body: editing.body }}
+          onClose={() => setEditing(null)}
+          onSave={handleEdit}
+        />
+      )}
     </section>
   );
 }

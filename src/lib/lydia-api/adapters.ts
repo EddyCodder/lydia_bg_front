@@ -178,7 +178,7 @@ export function adaptTemplateGroup(group: EvoTemplateGroup): TemplateGroup {
   return {
     id: group.id,
     title: group.title,
-    templates: group.Templates.map((t) => ({ command: t.command, label: t.label, body: t.body })),
+    templates: group.Templates.map((t) => ({ id: t.id, command: t.command, label: t.label, body: t.body })),
   };
 }
 

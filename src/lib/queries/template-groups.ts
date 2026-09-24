@@ -57,3 +57,20 @@ export function useCreateTemplate() {
     },
   });
 }
+
+// LYD-46: editar una plantilla existente (PATCH del route handler que ya
+// existia, y del endpoint /crm/templates/:id del back).
+export function useUpdateTemplate() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, command, label, body }: { id: string; command: string; label: string; body: string }) =>
+      fetchJson<{ template: { id: string; command: string; label: string; body: string } }>(
+        `/api/lydia/templates/${id}`,
+        { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ command, label, body }) },
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["templateGroups"] });
+    },
+  });
+}
