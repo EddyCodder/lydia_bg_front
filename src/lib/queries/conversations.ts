@@ -4,11 +4,25 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { InboxAgent, InboxConversation, InboxMessage } from "@/lib/lydia-api/inbox-types";
 import { LYDIA_API_ENABLED } from "@/lib/lydia-api/config";
 
+// LYD-56: antes esto tiraba un Error generico con el status pegado dentro
+// del mensaje (string) -- para armar manejo de errores por codigo (ej.
+// distinguir "backend caido, 502/503" de otros casos) hace falta el status
+// como campo propio, no parseando texto.
+export class LydiaFetchError extends Error {
+  status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "LydiaFetchError";
+    this.status = status;
+  }
+}
+
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, init);
   const body = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error(body.error ?? `Error ${res.status}`);
+    throw new LydiaFetchError(res.status, body.error ?? `Error ${res.status}`);
   }
   return body as T;
 }

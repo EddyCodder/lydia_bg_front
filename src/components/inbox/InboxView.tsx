@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
+  LydiaFetchError,
   useConversations,
   useForwardMessage,
   useLoadOlderMessages,
@@ -22,15 +23,35 @@ import { ChatThread } from "./ChatThread";
 import type { ComposerAudioInput, ComposerMediaInput, ComposerQuoted } from "./Composer";
 import { Icon } from "@/components/icons";
 
-function MockModeBanner({ detail }: { detail?: string }) {
+// Sin configurar (dev local sin .env.local) -- guia tecnica, no deberia
+// aparecer nunca en produccion (ahi siempre esta configurado).
+function MockModeBanner() {
   return (
     <div className="flex items-center gap-2 border-b border-accent/30 bg-accent/10 px-4 py-2 text-xs text-accent-dark">
       <Icon name="ajustes" size={14} className="shrink-0" />
       <span>
-        Viendo datos de ejemplo — la conexión al backend de Lydia está apagada{detail ? ` (${detail})` : ""}. Poné{" "}
+        Viendo datos de ejemplo — la conexión al backend de Lydia está apagada. Poné{" "}
         <code className="rounded bg-white/50 px-1">NEXT_PUBLIC_LYDIA_API_ENABLED=true</code> en{" "}
         <code className="rounded bg-white/50 px-1">.env.local</code> junto con las credenciales para conectar
         el inbox real.
+      </span>
+    </div>
+  );
+}
+
+// LYD-56: configurado y funcionando normalmente, pero la llamada de este
+// momento fallo (tipico durante un redeploy de evolution-api, que tarda unos
+// segundos en volver a responder) -- mensaje para la asesora, no para quien
+// programa. El codigo va aparte, chico, como base para ir distinguiendo
+// casos (ej. 401 vs 502) mas adelante.
+function BackendDownBanner({ error }: { error: Error }) {
+  const code = error instanceof LydiaFetchError ? error.status : null;
+  return (
+    <div className="flex items-center gap-2 border-b border-accent/30 bg-accent/10 px-4 py-2 text-xs text-accent-dark">
+      <Icon name="ajustes" size={14} className="shrink-0" />
+      <span>
+        Estamos actualizando el servicio — esperá un momento y volvé a intentar.
+        {code && <code className="ml-1.5 rounded bg-white/50 px-1">Error {code}</code>}
       </span>
     </div>
   );
@@ -254,7 +275,7 @@ export function InboxView() {
 
   return (
     <div className="flex h-full flex-1 flex-col overflow-hidden bg-bg text-ink">
-      {isMockMode && <MockModeBanner detail={error?.message} />}
+      {isMockMode && (!LYDIA_API_ENABLED ? <MockModeBanner /> : error && <BackendDownBanner error={error} />)}
       <div className="flex flex-1 overflow-hidden">
         <div className={`${mobileView === "list" ? "flex" : "hidden"} w-full shrink-0 md:flex md:w-auto`}>
           <ConversationList
