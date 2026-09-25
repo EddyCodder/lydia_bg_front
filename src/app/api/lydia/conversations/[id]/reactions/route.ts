@@ -9,9 +9,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const body = await request.json().catch(() => null);
 
   const key = body?.key;
-  const reaction = typeof body?.reaction === "string" ? body.reaction : "";
+  const reaction = body?.reaction;
 
-  if (!key || !reaction) {
+  // LYD-52: reaction "" es valido -- es como se saca una reaccion ya puesta
+  // (toggle en MessageContextMenu), no un error de input.
+  if (!key || typeof reaction !== "string") {
     return NextResponse.json({ error: "key y reaction son requeridos" }, { status: 400 });
   }
 

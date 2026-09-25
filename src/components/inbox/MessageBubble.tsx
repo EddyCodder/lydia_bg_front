@@ -41,6 +41,7 @@ export function MessageBubble({ message, instanceName, conversationId, onReply, 
   }
 
   const isOutbound = message.direction === "outbound";
+  const myReaction = message.reactions.find((r) => r.fromMe)?.emoji ?? null;
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -61,7 +62,7 @@ export function MessageBubble({ message, instanceName, conversationId, onReply, 
           <div
             className={`rounded-2xl text-sm leading-relaxed ${
               message.media ? "overflow-hidden p-1.5" : "whitespace-pre-line px-4 py-3"
-            } ${isOutbound ? "rounded-tr-sm bg-brand text-white" : "rounded-tl-sm bg-bg-subtle text-ink"}`}
+            } ${isOutbound ? "rounded-tr-sm bg-brand text-white" : "rounded-tl-sm bg-surface text-ink shadow-sm"}`}
           >
             {message.quotedPreview && (
               <p
@@ -109,6 +110,7 @@ export function MessageBubble({ message, instanceName, conversationId, onReply, 
           x={menuPos.x}
           y={menuPos.y}
           copyText={copyableText(message)}
+          activeEmoji={myReaction}
           onReply={() => onReply(message)}
           onReact={(emoji) => onReact(message, emoji)}
           onForward={() => setShowForward(true)}
