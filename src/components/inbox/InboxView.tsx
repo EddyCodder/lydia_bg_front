@@ -7,6 +7,7 @@ import {
   useLoadOlderMessages,
   useMarkConversationRead,
   useMessages,
+  useSendAudio,
   useSendMedia,
   useSendMessage,
   useSendReaction,
@@ -18,7 +19,7 @@ import type { InboxMessage } from "@/lib/lydia-api/inbox-types";
 import { ConversationList } from "./ConversationList";
 import { LeadDetailPanel } from "./LeadDetailPanel";
 import { ChatThread } from "./ChatThread";
-import type { ComposerMediaInput, ComposerQuoted } from "./Composer";
+import type { ComposerAudioInput, ComposerMediaInput, ComposerQuoted } from "./Composer";
 import { Icon } from "@/components/icons";
 
 function MockModeBanner({ detail }: { detail?: string }) {
@@ -73,6 +74,7 @@ export function InboxView() {
   } = useMessages(isMockMode ? null : selectedConversationId);
   const sendMessage = useSendMessage(selectedConversationId);
   const sendMedia = useSendMedia(selectedConversationId);
+  const sendAudio = useSendAudio(selectedConversationId);
   const sendReaction = useSendReaction(selectedConversationId);
   const forwardMessage = useForwardMessage();
   const markConversationRead = useMarkConversationRead();
@@ -185,6 +187,31 @@ export function InboxView() {
     }));
   };
 
+  // LYD-53: mismo criterio que handleSendMedia -- en mock queda un draft de
+  // texto describiendolo, no hay a quien mandarle la nota de voz real.
+  const handleSendAudio = async (input: ComposerAudioInput) => {
+    if (!isMockMode) {
+      await sendAudio.mutateAsync(input);
+      return;
+    }
+    if (selectedConversationId === null) return;
+    const draft: InboxMessage = {
+      id: `draft-${Date.now()}`,
+      direction: "outbound",
+      text: "[nota de voz]",
+      sentAt: new Date().toISOString(),
+      read: false,
+      senderName: "Mafer",
+      raw: { key: null, message: null },
+      quotedPreview: null,
+      reactions: [],
+    };
+    setMockDrafts((prev) => ({
+      ...prev,
+      [selectedConversationId]: [...(prev[selectedConversationId] ?? []), draft],
+    }));
+  };
+
   // LYD-52: reaccionar/reenviar no tienen contraparte en modo mock (no hay
   // Chat real ni segunda conversacion de ejemplo con sentido) -- se ignoran
   // ahi, mismo criterio que el resto de las acciones de solo-lectura del mock.
@@ -253,9 +280,10 @@ export function InboxView() {
                 thread={isMockMode ? mockMessages : [...olderMessages, ...realMessages]}
                 isLoading={isMockMode ? false : realMessagesLoading}
                 error={isMockMode ? null : realMessagesError}
-                sending={!isMockMode && (sendMessage.isPending || sendMedia.isPending)}
+                sending={!isMockMode && (sendMessage.isPending || sendMedia.isPending || sendAudio.isPending)}
                 onSend={handleSend}
                 onSendMedia={handleSendMedia}
+                onSendAudio={handleSendAudio}
                 onReact={handleReact}
                 onForward={handleForward}
                 onEditContact={handleEditContact}

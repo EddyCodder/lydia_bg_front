@@ -65,6 +65,7 @@ export const ICON_PATHS = {
     "M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1",
   ],
   equis: ["M18 6 6 18", "m6 6 12 12"],
+  check: ["M20 6 9 17l-5-5"],
 } as const;
 
 export type IconName = keyof typeof ICON_PATHS;

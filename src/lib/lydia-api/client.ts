@@ -163,6 +163,22 @@ export async function sendReaction(instanceName: string, key: unknown, reaction:
   });
 }
 
+// LYD-53: nota de voz grabada en el navegador. `audio` va como base64 inline
+// (mismo patron que sendMedia, sin multipart) -- el fork la pasa por
+// processAudio() en whatsapp.business.service.ts, que la manda al conversor
+// externo (API_AUDIO_CONVERTER) antes de subirla a Meta como mp3.
+export async function sendAudio(
+  remoteJid: string,
+  instanceName: string,
+  audio: string,
+  quoted?: EvoQuoted,
+): Promise<void> {
+  await evoFetch(`/message/sendWhatsAppAudio/${instanceName}`, {
+    method: "POST",
+    body: JSON.stringify({ number: remoteJid, audio, quoted }),
+  });
+}
+
 // LYD-15: baja bajo demanda el base64 de un mensaje de media recibido --
 // Evolution API descifra la media de WhatsApp (mediaKey + directPath) al
 // vuelo, no queda guardada en ningun lado (no hay S3/MinIO configurado en

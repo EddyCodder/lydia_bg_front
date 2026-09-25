@@ -5,7 +5,7 @@ import type { InboxConversation, InboxMessage } from "@/lib/lydia-api/inbox-type
 import { CHANNEL_META } from "@/lib/lydia-api/channel";
 import { formatMessageDay } from "@/lib/format";
 import { MessageBubble } from "./MessageBubble";
-import { Composer, type ComposerMediaInput, type ComposerQuoted } from "./Composer";
+import { Composer, type ComposerAudioInput, type ComposerMediaInput, type ComposerQuoted } from "./Composer";
 import { EditContactMenu } from "./EditContactMenu";
 import { Icon } from "@/components/icons";
 
@@ -16,6 +16,7 @@ interface Props {
   error: Error | null;
   onSend: (text: string, quoted?: ComposerQuoted) => Promise<void>;
   onSendMedia: (input: ComposerMediaInput) => Promise<void>;
+  onSendAudio: (input: ComposerAudioInput) => Promise<void>;
   onReact: (message: InboxMessage, emoji: string) => void;
   onForward: (message: InboxMessage, targetConversationId: string) => void;
   sending: boolean;
@@ -33,6 +34,7 @@ export function ChatThread({
   error,
   onSend,
   onSendMedia,
+  onSendAudio,
   onReact,
   onForward,
   sending,
@@ -138,6 +140,7 @@ export function ChatThread({
       <Composer
         onSend={onSend}
         onSendMedia={onSendMedia}
+        onSendAudio={onSendAudio}
         disabled={sending || !conversation.id}
         replyingTo={replyingTo}
         onCancelReply={() => setReplyingTo(null)}
