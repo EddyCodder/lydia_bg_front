@@ -15,6 +15,7 @@ import type {
   InboxMediaKind,
   InboxMessage,
   InboxMessageMedia,
+  InboxMessageReaction,
   InboxNote,
 } from "./inbox-types";
 import type { CalendarEvent, Lead, TemplateGroup } from "@/lib/types";
@@ -109,7 +110,15 @@ function detectMedia(raw: EvoMessage): InboxMessageMedia | undefined {
   return undefined;
 }
 
-export function adaptMessage(message: EvoMessage): InboxMessage {
+// LYD-52: snippet corto del mensaje citado (si `message` es una respuesta a
+// otro), para pintar la franja de "responder a" arriba de la burbuja.
+function quotedPreview(message: EvoMessage["message"]): string | null {
+  const quoted = message.extendedTextMessage?.contextInfo?.quotedMessage;
+  if (!quoted) return null;
+  return messageText(quoted) || "Adjunto";
+}
+
+export function adaptMessage(message: EvoMessage, reactions: InboxMessageReaction[] = []): InboxMessage {
   const direction: InboxMessage["direction"] = message.key.fromMe ? "outbound" : "inbound";
   const lastStatus = message.MessageUpdate?.[message.MessageUpdate.length - 1]?.status;
   const media = detectMedia(message);
@@ -122,7 +131,37 @@ export function adaptMessage(message: EvoMessage): InboxMessage {
     read: lastStatus === "READ" || lastStatus === "read",
     senderName: message.pushName ?? undefined,
     media,
+    raw: { key: message.key, message: message.message },
+    quotedPreview: quotedPreview(message.message),
+    reactions,
   };
+}
+
+// LYD-52: WhatsApp manda cada reaccion como su propio registro de mensaje
+// (messageType reactionMessage), apuntando al key del mensaje reaccionado --
+// no encaja como un InboxMessage mas en el hilo. Esto los saca de la lista y
+// arma un mapa id-del-mensaje-original -> reacciones, para que adaptMessage
+// se las adjunte al pasar.
+export function foldReactions(records: EvoMessage[]): { records: EvoMessage[]; reactionsByMessageId: Map<string, InboxMessageReaction[]> } {
+  const reactionsByMessageId = new Map<string, InboxMessageReaction[]>();
+  const rest: EvoMessage[] = [];
+
+  for (const record of records) {
+    const reaction = record.message?.reactionMessage;
+    if (reaction) {
+      const targetId = reaction.key.id;
+      const list = reactionsByMessageId.get(targetId) ?? [];
+      // Un remitente solo tiene una reaccion activa a la vez -- la nueva
+      // reemplaza la anterior, y texto vacio significa que la saco.
+      const withoutSameSender = list.filter((r) => r.fromMe !== record.key.fromMe);
+      if (reaction.text) withoutSameSender.push({ emoji: reaction.text, fromMe: record.key.fromMe });
+      reactionsByMessageId.set(targetId, withoutSameSender);
+      continue;
+    }
+    rest.push(record);
+  }
+
+  return { records: rest, reactionsByMessageId };
 }
 
 /**

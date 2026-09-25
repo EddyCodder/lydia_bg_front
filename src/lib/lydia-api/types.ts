@@ -117,11 +117,27 @@ export interface EvoMessage {
   messageType: string;
   message: {
     conversation?: string;
-    extendedTextMessage?: { text: string };
+    extendedTextMessage?: {
+      text: string;
+      // LYD-52: presente cuando este mensaje es una respuesta a otro.
+      contextInfo?: { stanzaId?: string; quotedMessage?: EvoMessage["message"] };
+    };
+    // LYD-52: WhatsApp manda una reaccion como su propio "mensaje", apuntando
+    // al key del mensaje reaccionado -- se pliega en listMessages, no llega
+    // a la UI como registro propio.
+    reactionMessage?: { key: { id: string }; text: string };
     [key: string]: unknown;
   };
   messageTimestamp: number; // epoch seconds
   MessageUpdate?: { status: string }[];
+}
+
+// LYD-52: lo que Evolution API espera como `quoted` en sendText/sendMedia/
+// sendWhatsAppAudio (Options.quoted en sendMessage.dto.ts del fork) -- key +
+// message crudos del mensaje que se esta citando.
+export interface EvoQuoted {
+  key: unknown;
+  message: unknown;
 }
 
 // POST /message/sendMedia/:instance -- media como base64 o url (SendMediaDto)

@@ -171,16 +171,25 @@ export function useUpdateConversationContact() {
   });
 }
 
+// LYD-52: `quoted` es el {key, message} crudo del mensaje al que se responde
+// (InboxMessage.raw) -- ausente en un envio normal, sin citar nada.
+export interface SendMessageInput {
+  content: string;
+  quoted?: { key: unknown; message: unknown };
+}
+
 export function useSendMessage(conversationId: string | null) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (content: string) =>
-      fetchJson<{ ok: true }>(`/api/lydia/conversations/${conversationId}/messages`, {
+    mutationFn: (input: string | SendMessageInput) => {
+      const body = typeof input === "string" ? { content: input } : input;
+      return fetchJson<{ ok: true }>(`/api/lydia/conversations/${conversationId}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content }),
-      }),
+        body: JSON.stringify(body),
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["messages", conversationId] });
       queryClient.invalidateQueries({ queryKey: ["conversations"] });
@@ -194,6 +203,7 @@ export interface SendMediaInput {
   mimetype?: string;
   fileName?: string;
   caption?: string;
+  quoted?: { key: unknown; message: unknown };
 }
 
 export function useSendMedia(conversationId: string | null) {
@@ -208,6 +218,57 @@ export function useSendMedia(conversationId: string | null) {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["messages", conversationId] });
+      queryClient.invalidateQueries({ queryKey: ["conversations"] });
+    },
+  });
+}
+
+// LYD-52: reaccion rapida con emoji sobre un mensaje puntual (menu contextual).
+export function useSendReaction(conversationId: string | null) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: { key: unknown; reaction: string }) =>
+      fetchJson<{ ok: true }>(`/api/lydia/conversations/${conversationId}/reactions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["messages", conversationId] });
+    },
+  });
+}
+
+// LYD-52: "Reenviar" no tiene ruta propia -- reusa messages/media de la
+// conversacion DESTINO, elegida recien al ejecutar (por eso no toma
+// conversationId como el resto de los hooks de arriba, sino por mutation).
+export interface ForwardMessageInput {
+  targetConversationId: string;
+  text: string;
+  media?: { mediatype: SendMediaInput["mediatype"]; media: string; mimetype?: string; fileName?: string; caption?: string };
+}
+
+export function useForwardMessage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ targetConversationId, text, media }: ForwardMessageInput) => {
+      if (media) {
+        return fetchJson<{ ok: true }>(`/api/lydia/conversations/${targetConversationId}/media`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(media),
+        });
+      }
+      return fetchJson<{ ok: true }>(`/api/lydia/conversations/${targetConversationId}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: text }),
+      });
+    },
+    onSuccess: (_data, { targetConversationId }) => {
+      queryClient.invalidateQueries({ queryKey: ["messages", targetConversationId] });
       queryClient.invalidateQueries({ queryKey: ["conversations"] });
     },
   });

@@ -3,11 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   useConversations,
+  useForwardMessage,
   useLoadOlderMessages,
   useMarkConversationRead,
   useMessages,
   useSendMedia,
   useSendMessage,
+  useSendReaction,
   useUpdateConversationContact,
 } from "@/lib/queries/conversations";
 import { getMockMessages, mockInboxConversations } from "@/lib/lydia-api/mock-fallback";
@@ -16,7 +18,7 @@ import type { InboxMessage } from "@/lib/lydia-api/inbox-types";
 import { ConversationList } from "./ConversationList";
 import { LeadDetailPanel } from "./LeadDetailPanel";
 import { ChatThread } from "./ChatThread";
-import type { ComposerMediaInput } from "./Composer";
+import type { ComposerMediaInput, ComposerQuoted } from "./Composer";
 import { Icon } from "@/components/icons";
 
 function MockModeBanner({ detail }: { detail?: string }) {
@@ -71,6 +73,8 @@ export function InboxView() {
   } = useMessages(isMockMode ? null : selectedConversationId);
   const sendMessage = useSendMessage(selectedConversationId);
   const sendMedia = useSendMedia(selectedConversationId);
+  const sendReaction = useSendReaction(selectedConversationId);
+  const forwardMessage = useForwardMessage();
   const markConversationRead = useMarkConversationRead();
   const updateContact = useUpdateConversationContact();
   const loadOlderMessages = useLoadOlderMessages(selectedConversationId);
@@ -133,9 +137,9 @@ export function InboxView() {
 
   // LYD-14: Composer espera una promesa que se rechaza si el envio falla,
   // para no borrar el texto ni perder el error en silencio.
-  const handleSend = async (text: string) => {
+  const handleSend = async (text: string, quoted?: ComposerQuoted) => {
     if (!isMockMode) {
-      await sendMessage.mutateAsync(text);
+      await sendMessage.mutateAsync(quoted ? { content: text, quoted } : text);
       return;
     }
     if (selectedConversationId === null) return;
@@ -146,6 +150,9 @@ export function InboxView() {
       sentAt: new Date().toISOString(),
       read: false,
       senderName: "Mafer",
+      raw: { key: null, message: null },
+      quotedPreview: null,
+      reactions: [],
     };
     setMockDrafts((prev) => ({
       ...prev,
@@ -168,11 +175,54 @@ export function InboxView() {
       sentAt: new Date().toISOString(),
       read: false,
       senderName: "Mafer",
+      raw: { key: null, message: null },
+      quotedPreview: null,
+      reactions: [],
     };
     setMockDrafts((prev) => ({
       ...prev,
       [selectedConversationId]: [...(prev[selectedConversationId] ?? []), draft],
     }));
+  };
+
+  // LYD-52: reaccionar/reenviar no tienen contraparte en modo mock (no hay
+  // Chat real ni segunda conversacion de ejemplo con sentido) -- se ignoran
+  // ahi, mismo criterio que el resto de las acciones de solo-lectura del mock.
+  const handleReact = (message: InboxMessage, emoji: string) => {
+    if (isMockMode) return;
+    sendReaction.mutate({ key: message.raw.key, reaction: emoji });
+  };
+
+  const handleForward = (message: InboxMessage, targetConversationId: string) => {
+    if (isMockMode) return;
+    if (message.media) {
+      // El adjunto original ya se resolvio a base64 al pintarse (LYD-15,
+      // cacheado por messageId) -- pero forwardMessage no tiene acceso a ese
+      // cache de React Query aca, asi que reenviar un adjunto pide primero
+      // su base64 igual que hace MessageMedia.tsx.
+      fetch("/api/lydia/media", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...message.media.raw, instanceName: selectedConversation?.instanceName }),
+      })
+        .then((res) => res.json())
+        .then((data: { dataUrl: string }) => {
+          const base64 = data.dataUrl.slice(data.dataUrl.indexOf(",") + 1);
+          forwardMessage.mutate({
+            targetConversationId,
+            text: "",
+            media: {
+              mediatype: message.media!.kind === "sticker" ? "image" : (message.media!.kind as "image" | "document" | "video" | "audio"),
+              media: base64,
+              mimetype: message.media!.mimetype,
+              fileName: message.media!.fileName,
+              caption: message.media!.caption,
+            },
+          });
+        });
+      return;
+    }
+    forwardMessage.mutate({ targetConversationId, text: message.text });
   };
 
   return (
@@ -206,6 +256,8 @@ export function InboxView() {
                 sending={!isMockMode && (sendMessage.isPending || sendMedia.isPending)}
                 onSend={handleSend}
                 onSendMedia={handleSendMedia}
+                onReact={handleReact}
+                onForward={handleForward}
                 onEditContact={handleEditContact}
                 onLoadOlder={handleLoadOlder}
                 loadingOlder={loadOlderMessages.isPending}
