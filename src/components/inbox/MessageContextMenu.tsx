@@ -11,6 +11,9 @@ interface Props {
   x: number;
   y: number;
   copyText: string;
+  // LYD-52: emoji con el que ya reaccione a este mensaje, si hay uno -- se
+  // marca en la fila y volver a tocarlo saca la reaccion (toggle).
+  activeEmoji: string | null;
   onReact: (emoji: string) => void;
   onReply: () => void;
   onForward: () => void;
@@ -21,7 +24,7 @@ interface Props {
 // puntualmente el menu nativo del navegador solo ahi (ver el onContextMenu
 // que ChatThread.tsx sacaba de todo el panel). Posicionado en las coordenadas
 // del click, mismo patron de outside-click + Escape que ConversationRowMenu.
-export function MessageContextMenu({ x, y, copyText, onReact, onReply, onForward, onClose }: Props) {
+export function MessageContextMenu({ x, y, copyText, activeEmoji, onReact, onReply, onForward, onClose }: Props) {
   const [copied, setCopied] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -58,11 +61,15 @@ export function MessageContextMenu({ x, y, copyText, onReact, onReply, onForward
             key={emoji}
             type="button"
             onClick={() => {
-              onReact(emoji);
+              // Tocar de nuevo la reaccion ya activa la saca (mismo criterio
+              // que el long-press de WhatsApp).
+              onReact(emoji === activeEmoji ? "" : emoji);
               onClose();
             }}
             aria-label={`Reaccionar con ${emoji}`}
-            className="flex h-8 w-8 items-center justify-center rounded-full text-lg hover:bg-bg-subtle"
+            className={`flex h-8 w-8 items-center justify-center rounded-full text-lg hover:bg-bg-subtle ${
+              emoji === activeEmoji ? "bg-brand/15 ring-2 ring-brand" : ""
+            }`}
           >
             {emoji}
           </button>

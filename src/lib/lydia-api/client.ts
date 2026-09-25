@@ -154,8 +154,8 @@ export async function sendMedia(
 }
 
 // LYD-52: reaccion rapida con emoji sobre un mensaje puntual. `reaction: ""`
-// (no usado por el front todavia) es como WhatsApp representa "sacar la
-// reaccion" en sendReactionMessage.dto.ts del fork.
+// es como WhatsApp representa "sacar la reaccion" -- MessageContextMenu lo
+// manda al tocar de nuevo el emoji ya activo.
 export async function sendReaction(instanceName: string, key: unknown, reaction: string): Promise<void> {
   await evoFetch(`/message/sendReaction/${instanceName}`, {
     method: "POST",
