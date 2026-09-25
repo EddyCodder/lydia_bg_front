@@ -22,6 +22,8 @@ import { LeadDetailPanel } from "./LeadDetailPanel";
 import { ChatThread } from "./ChatThread";
 import type { ComposerAudioInput, ComposerMediaInput, ComposerQuoted } from "./Composer";
 import { Icon } from "@/components/icons";
+import { useNewMessageAlerts } from "@/lib/hooks/useNewMessageAlerts";
+import { requestNotificationPermissionIfNeeded } from "@/lib/notifications";
 
 // Sin configurar (dev local sin .env.local) -- guia tecnica, no deberia
 // aparecer nunca en produccion (ahi siempre esta configurado).
@@ -82,6 +84,14 @@ export function InboxView() {
       return { ...c, contact: { ...c.contact, name: override.name || c.contact.name, phone: override.phone || c.contact.phone } };
     });
   }, [isMockMode, realConversations, mockContactOverrides]);
+
+  // LYD-57: sonido + notificacion del navegador cuando llega un mensaje
+  // nuevo en cualquier conversacion. En modo mock no hay polling real, asi
+  // que se desactiva (no tiene sentido alertar por datos de ejemplo).
+  useEffect(() => {
+    requestNotificationPermissionIfNeeded();
+  }, []);
+  useNewMessageAlerts(conversations, !isMockMode);
 
   // LYD-29: solo se abre el chat que el agente elige. Antes caia a conversations[0], y como abrir un chat con
   // mensajes sin leer lo marca como leido (LYD-13), entrar al inbox marcaba la primera conversacion como leida
