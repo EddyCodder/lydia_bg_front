@@ -301,7 +301,7 @@ export function useForwardMessage() {
 // cachea por messageId asi MessageBubble no vuelve a pedirlo en cada re-render.
 export function useResolveMedia(
   messageId: string,
-  raw: { key: unknown; message: unknown },
+  raw: { key: unknown; message: unknown; messageType: string },
   instanceName: string,
   enabled: boolean,
 ) {

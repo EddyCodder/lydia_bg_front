@@ -103,7 +103,10 @@ function detectMedia(raw: EvoMessage): InboxMessageMedia | undefined {
         caption: payload.caption,
         fileName: payload.fileName,
         mimetype: payload.mimetype,
-        raw: { key: raw.key, message: raw.message },
+        // messageType = el nombre del campo que matcheo (ej "audioMessage")
+        // -- es exactamente lo que getBase64FromMediaMessage necesita del
+        // lado del back para saber donde mirar dentro de `message`.
+        raw: { key: raw.key, message: raw.message, messageType: key },
       };
     }
   }
