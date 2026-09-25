@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import EmojiPicker, { type EmojiClickData } from "emoji-picker-react";
 import { templateGroups as mockTemplateGroups } from "@/lib/mock-data";
 import { LYDIA_API_ENABLED } from "@/lib/lydia-api/config";
 import { useTemplateGroups } from "@/lib/queries/template-groups";
 import type { InboxMessage } from "@/lib/lydia-api/inbox-types";
 import { Icon } from "@/components/icons";
+import { useEscapeKey } from "@/lib/hooks/useEscapeKey";
 
 // LYD-52: {key, message} crudo del mensaje citado -- lo que Evolution API
 // espera como `quoted` en sendText/sendMedia.
@@ -82,6 +84,39 @@ export function Composer({
   const [isSending, setIsSending] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // LYD-55: picker de emojis para insertar en el texto (distinto de las
+  // reacciones rapidas del menu contextual, LYD-52 -- esto es edicion local
+  // del textarea, no manda nada a la API).
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const emojiWrapperRef = useRef<HTMLDivElement>(null);
+  useEscapeKey(showEmojiPicker, () => setShowEmojiPicker(false));
+  useEffect(() => {
+    if (!showEmojiPicker) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (emojiWrapperRef.current && !emojiWrapperRef.current.contains(e.target as Node)) {
+        setShowEmojiPicker(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showEmojiPicker]);
+
+  const insertEmoji = (data: EmojiClickData) => {
+    const textarea = textareaRef.current;
+    const start = textarea?.selectionStart ?? value.length;
+    const end = textarea?.selectionEnd ?? value.length;
+    const next = value.slice(0, start) + data.emoji + value.slice(end);
+    setValue(next);
+    setShowEmojiPicker(false);
+    // Reponer el cursor justo despues del emoji insertado -- sin esto queda
+    // al final del textarea (comportamiento por defecto de setValue).
+    requestAnimationFrame(() => {
+      const pos = start + data.emoji.length;
+      textarea?.focus();
+      textarea?.setSelectionRange(pos, pos);
+    });
+  };
 
   // LYD-53: grabacion de nota de voz -- estado separado del resto porque
   // reemplaza toda la fila de botones mientras esta activa.
@@ -339,14 +374,33 @@ export function Composer({
         ) : (
           <div className="flex items-center justify-between px-3 pb-2.5">
             <div className="flex items-center gap-3 text-muted">
-              <button type="button" aria-label="Emoji" className="hover:text-ink-soft">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="10" />
-                  <path d="M8 14s1.5 2 4 2 4-2 4-2" />
-                  <line x1="9" y1="9" x2="9.01" y2="9" />
-                  <line x1="15" y1="9" x2="15.01" y2="9" />
-                </svg>
-              </button>
+              <div ref={emojiWrapperRef} className="relative">
+                <button
+                  type="button"
+                  aria-label="Emoji"
+                  disabled={disabled || isSending}
+                  onClick={() => setShowEmojiPicker((v) => !v)}
+                  className="hover:text-ink-soft disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+                    <line x1="9" y1="9" x2="9.01" y2="9" />
+                    <line x1="15" y1="9" x2="15.01" y2="9" />
+                  </svg>
+                </button>
+                {showEmojiPicker && (
+                  <div className="absolute bottom-full left-0 z-20 mb-2">
+                    <EmojiPicker
+                      onEmojiClick={insertEmoji}
+                      autoFocusSearch={false}
+                      width={320}
+                      height={380}
+                      searchPlaceholder="Buscar emoji"
+                    />
+                  </div>
+                )}
+              </div>
               <button
                 type="button"
                 aria-label="Adjuntar archivo"
