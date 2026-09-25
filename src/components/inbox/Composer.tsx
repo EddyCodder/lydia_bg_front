@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { templateGroups as mockTemplateGroups } from "@/lib/mock-data";
 import { LYDIA_API_ENABLED } from "@/lib/lydia-api/config";
 import { useTemplateGroups } from "@/lib/queries/template-groups";
@@ -25,9 +25,15 @@ function replyPreviewText(message: InboxMessage): string {
   return "";
 }
 
+export interface ComposerAudioInput {
+  audio: string;
+  quoted?: ComposerQuoted;
+}
+
 interface Props {
   onSend: (text: string, quoted?: ComposerQuoted) => Promise<void>;
   onSendMedia: (input: ComposerMediaInput) => Promise<void>;
+  onSendAudio: (input: ComposerAudioInput) => Promise<void>;
   disabled?: boolean;
   // LYD-52: mensaje al que se esta respondiendo (elegido con "Responder" del
   // menu contextual), null cuando el envio es normal.
@@ -42,7 +48,9 @@ function mediatypeFromMime(mimetype: string): ComposerMediaInput["mediatype"] {
   return "document";
 }
 
-function readFileAsBase64(file: File): Promise<string> {
+// LYD-53: File extends Blob -- sirve igual para el adjunto elegido a mano
+// que para el Blob que arma MediaRecorder al grabar una nota de voz.
+function readBlobAsBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
@@ -50,17 +58,105 @@ function readFileAsBase64(file: File): Promise<string> {
       resolve(result.slice(result.indexOf(",") + 1));
     };
     reader.onerror = () => reject(reader.error ?? new Error("No se pudo leer el archivo"));
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(blob);
   });
 }
 
-export function Composer({ onSend, onSendMedia, disabled = false, replyingTo = null, onCancelReply }: Props) {
+function formatElapsed(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+export function Composer({
+  onSend,
+  onSendMedia,
+  onSendAudio,
+  disabled = false,
+  replyingTo = null,
+  onCancelReply,
+}: Props) {
   const [value, setValue] = useState("");
   const [highlighted, setHighlighted] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // LYD-53: grabacion de nota de voz -- estado separado del resto porque
+  // reemplaza toda la fila de botones mientras esta activa.
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
+  const recordingStreamRef = useRef<MediaStream | null>(null);
+  const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const stopRecordingStream = () => {
+    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+    recordingStreamRef.current?.getTracks().forEach((track) => track.stop());
+    recordingStreamRef.current = null;
+    mediaRecorderRef.current = null;
+  };
+
+  // Si el composer se desmonta con el mic todavia abierto (se cambia de
+  // conversacion a mitad de una grabacion), no debe quedar el microfono
+  // encendido en segundo plano. Solo toca refs (estables) para no arrastrar
+  // stopRecordingStream a las deps del efecto.
+  useEffect(() => {
+    return () => {
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+      recordingStreamRef.current?.getTracks().forEach((track) => track.stop());
+    };
+  }, []);
+
+  const startRecording = async () => {
+    if (disabled || isSending || isRecording) return;
+    setError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      recordingStreamRef.current = stream;
+      recordedChunksRef.current = [];
+      const recorder = new MediaRecorder(stream);
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) recordedChunksRef.current.push(e.data);
+      };
+      mediaRecorderRef.current = recorder;
+      recorder.start();
+      setIsRecording(true);
+      setRecordingSeconds(0);
+      recordingTimerRef.current = setInterval(() => setRecordingSeconds((s) => s + 1), 1000);
+    } catch {
+      setError("No se pudo acceder al micrófono");
+    }
+  };
+
+  const cancelRecording = () => {
+    mediaRecorderRef.current?.stop();
+    stopRecordingStream();
+    setIsRecording(false);
+  };
+
+  const stopAndSendRecording = () => {
+    const recorder = mediaRecorderRef.current;
+    if (!recorder) return;
+    recorder.onstop = async () => {
+      const blob = new Blob(recordedChunksRef.current, { type: recorder.mimeType });
+      stopRecordingStream();
+      setIsRecording(false);
+      setIsSending(true);
+      try {
+        const audio = await readBlobAsBase64(blob);
+        await onSendAudio({ audio, quoted: replyingTo ? replyingTo.raw : undefined });
+        onCancelReply?.();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "No se pudo enviar la nota de voz");
+      } finally {
+        setIsSending(false);
+      }
+    };
+    recorder.stop();
+  };
 
   const { data: realGroups = [], error: groupsError } = useTemplateGroups();
   const isMockMode = !LYDIA_API_ENABLED || groupsError !== null;
@@ -106,7 +202,7 @@ export function Composer({ onSend, onSendMedia, disabled = false, replyingTo = n
     setError(null);
     setIsSending(true);
     try {
-      const media = await readFileAsBase64(file);
+      const media = await readBlobAsBase64(file);
       await onSendMedia({
         mediatype: mediatypeFromMime(file.type),
         media,
@@ -215,51 +311,84 @@ export function Composer({ onSend, onSendMedia, disabled = false, replyingTo = n
           placeholder="Escribe un mensaje o */* para mensajes predeterminados"
           className="w-full resize-none rounded-t-2xl px-4 pt-3 text-sm text-ink-soft placeholder:text-muted focus:outline-none"
         />
-        <div className="flex items-center justify-between px-3 pb-2.5">
-          <div className="flex items-center gap-3 text-muted">
-            <button type="button" aria-label="Emoji" className="hover:text-ink-soft">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10" />
-                <path d="M8 14s1.5 2 4 2 4-2 4-2" />
-                <line x1="9" y1="9" x2="9.01" y2="9" />
-                <line x1="15" y1="9" x2="15.01" y2="9" />
-              </svg>
-            </button>
+        {isRecording ? (
+          <div className="flex items-center justify-between px-3 pb-2.5">
+            <div className="flex items-center gap-2 text-sm text-ink-soft">
+              <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-danger" />
+              Grabando… {formatElapsed(recordingSeconds)}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={cancelRecording}
+                aria-label="Descartar grabación"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-muted hover:bg-bg-subtle hover:text-danger"
+              >
+                <Icon name="basura" size={16} />
+              </button>
+              <button
+                type="button"
+                onClick={stopAndSendRecording}
+                aria-label="Enviar nota de voz"
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-brand text-white hover:bg-brand-dark"
+              >
+                <Icon name="check" size={16} />
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between px-3 pb-2.5">
+            <div className="flex items-center gap-3 text-muted">
+              <button type="button" aria-label="Emoji" className="hover:text-ink-soft">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+                  <line x1="9" y1="9" x2="9.01" y2="9" />
+                  <line x1="15" y1="9" x2="15.01" y2="9" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                aria-label="Adjuntar archivo"
+                disabled={disabled || isSending}
+                onClick={() => fileInputRef.current?.click()}
+                className="hover:text-ink-soft disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21.44 11.05l-9.19 9.19a5 5 0 01-7.07-7.07l9.19-9.19a3.5 3.5 0 014.95 4.95l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
+                </svg>
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                onChange={handleFileChange}
+                accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt"
+                className="hidden"
+              />
+              <button
+                type="button"
+                aria-label="Nota de voz"
+                disabled={disabled || isSending}
+                onClick={startRecording}
+                className="hover:text-ink-soft disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
+                  <path d="M19 10v2a7 7 0 01-14 0v-2" />
+                  <line x1="12" y1="19" x2="12" y2="23" />
+                </svg>
+              </button>
+            </div>
             <button
               type="button"
-              aria-label="Adjuntar archivo"
-              disabled={disabled || isSending}
-              onClick={() => fileInputRef.current?.click()}
-              className="hover:text-ink-soft disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={handleSend}
+              disabled={!value.trim() || disabled || isSending}
+              className="rounded-lg bg-muted-2 px-4 py-1.5 text-sm font-medium text-white transition-colors enabled:bg-brand enabled:hover:bg-brand-dark disabled:cursor-not-allowed"
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21.44 11.05l-9.19 9.19a5 5 0 01-7.07-7.07l9.19-9.19a3.5 3.5 0 014.95 4.95l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
-              </svg>
-            </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              onChange={handleFileChange}
-              accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt"
-              className="hidden"
-            />
-            <button type="button" aria-label="Nota de voz" className="hover:text-ink-soft">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
-                <path d="M19 10v2a7 7 0 01-14 0v-2" />
-                <line x1="12" y1="19" x2="12" y2="23" />
-              </svg>
+              {disabled || isSending ? "Enviando…" : "Enviar"}
             </button>
           </div>
-          <button
-            type="button"
-            onClick={handleSend}
-            disabled={!value.trim() || disabled || isSending}
-            className="rounded-lg bg-muted-2 px-4 py-1.5 text-sm font-medium text-white transition-colors enabled:bg-brand enabled:hover:bg-brand-dark disabled:cursor-not-allowed"
-          >
-            {disabled || isSending ? "Enviando…" : "Enviar"}
-          </button>
-        </div>
+        )}
       </div>
     </div>
   );

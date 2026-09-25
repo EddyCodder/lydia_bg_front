@@ -223,6 +223,29 @@ export function useSendMedia(conversationId: string | null) {
   });
 }
 
+// LYD-53: nota de voz grabada en el navegador.
+export interface SendAudioInput {
+  audio: string;
+  quoted?: { key: unknown; message: unknown };
+}
+
+export function useSendAudio(conversationId: string | null) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: SendAudioInput) =>
+      fetchJson<{ ok: true }>(`/api/lydia/conversations/${conversationId}/audio`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["messages", conversationId] });
+      queryClient.invalidateQueries({ queryKey: ["conversations"] });
+    },
+  });
+}
+
 // LYD-52: reaccion rapida con emoji sobre un mensaje puntual (menu contextual).
 export function useSendReaction(conversationId: string | null) {
   const queryClient = useQueryClient();
