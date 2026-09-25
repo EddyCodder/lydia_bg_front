@@ -182,10 +182,13 @@ export async function sendAudio(
 // LYD-15: baja bajo demanda el base64 de un mensaje de media recibido --
 // Evolution API descifra la media de WhatsApp (mediaKey + directPath) al
 // vuelo, no queda guardada en ningun lado (no hay S3/MinIO configurado en
-// este deploy). "message" es el {key, message} crudo tal cual vino de
-// listMessages.
+// este deploy). "message" es el {key, message, messageType} crudo tal cual
+// vino de listMessages -- messageType (LYD-53 fix) es obligatorio del lado
+// del back para el canal Business/Cloud API (getBase64FromMediaMessage en
+// whatsapp.business.service.ts), sin el tira TypeError para cualquier
+// adjunto, entrante o saliente.
 export async function getMediaBase64(
-  message: { key: unknown; message: unknown },
+  message: { key: unknown; message: unknown; messageType: string },
   instanceName: string,
 ): Promise<EvoMediaResult> {
   return evoFetch<EvoMediaResult>(`/chat/getBase64FromMediaMessage/${instanceName}`, {

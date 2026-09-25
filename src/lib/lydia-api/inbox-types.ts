@@ -29,10 +29,15 @@ export interface InboxMessageMedia {
   caption?: string;
   fileName?: string;
   mimetype?: string;
-  // Datos crudos (key + message) necesarios para pedirle a Evolution API el
-  // base64 bajo demanda (LYD-15) -- no se resuelve al listar mensajes para
-  // no cargar cada poll con blobs pesados, solo cuando el bubble lo pide.
-  raw: { key: unknown; message: unknown };
+  // Datos crudos necesarios para pedirle a Evolution API el base64 bajo
+  // demanda (LYD-15) -- no se resuelve al listar mensajes para no cargar
+  // cada poll con blobs pesados, solo cuando el bubble lo pide.
+  // messageType (LYD-53 fix): el canal WhatsApp Business/Cloud API de
+  // getBase64FromMediaMessage necesita saber a que campo de `message` mirar
+  // (`audioMessage`, `imageMessage`, etc) -- sin esto tira TypeError server-
+  // side ("No se pudo cargar el archivo") para CUALQUIER adjunto, entrante o
+  // saliente. Bug preexistente a LYD-53, recien detectado con notas de voz.
+  raw: { key: unknown; message: unknown; messageType: string };
 }
 
 // LYD-52: reaccion agregada sobre un mensaje. WhatsApp la manda como un
