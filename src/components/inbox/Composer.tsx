@@ -385,7 +385,10 @@ export function Composer({
               disabled={!value.trim() || disabled || isSending}
               className="rounded-lg bg-muted-2 px-4 py-1.5 text-sm font-medium text-white transition-colors enabled:bg-brand enabled:hover:bg-brand-dark disabled:cursor-not-allowed"
             >
-              {disabled || isSending ? "Enviando…" : "Enviar"}
+              {/* LYD-54: "disabled" ahora tambien cubre el bloqueo por ventana
+                  de 24h -- "Enviando…" seria enganioso ahi, isSending es lo
+                  unico que de verdad significa "en vuelo". */}
+              {isSending ? "Enviando…" : "Enviar"}
             </button>
           </div>
         )}
