@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { InboxConversation, InboxMessage } from "@/lib/lydia-api/inbox-types";
 import { CHANNEL_META } from "@/lib/lydia-api/channel";
-import { formatMessageDay } from "@/lib/format";
+import { formatLeadCardDate, formatMessageDay } from "@/lib/format";
 import { MessageBubble } from "./MessageBubble";
 import { Composer, type ComposerAudioInput, type ComposerMediaInput, type ComposerQuoted } from "./Composer";
 import { EditContactMenu } from "./EditContactMenu";
@@ -68,6 +68,25 @@ export function ChatThread({
       lastMessageIdRef.current = lastId;
     }
   }, [thread]);
+
+  // LYD-54: Meta rechaza texto libre si pasaron mas de 24h desde el ultimo
+  // mensaje del contacto (solo deja plantillas pre-aprobadas fuera de esa
+  // ventana) -- antes el agente lo descubria recien cuando el envio fallaba
+  // en silencio del lado de Meta (el error solo quedaba en los logs de
+  // evolution-api). Se calcula 100% aca, del thread ya cargado -- alcanza:
+  // los ultimos mensajes siempre estan en la pagina ya traida por polling.
+  // "now" en estado (no Date.now() directo en el render, que es impuro) y
+  // refrescado cada minuto, asi el aviso aparece solo con el chat abierto
+  // sin esperar a que llegue un mensaje nuevo.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const lastInboundAt = findLastInboundAt(thread);
+  const outsideSessionWindow =
+    thread.length > 0 && (lastInboundAt === null || now - new Date(lastInboundAt).getTime() > SESSION_WINDOW_MS);
 
   const groups = groupByDay(thread);
 
@@ -137,16 +156,37 @@ export function ChatThread({
         <div ref={bottomRef} />
       </div>
 
+      {outsideSessionWindow && (
+        <div className="flex items-start gap-2 border-t border-line-soft bg-accent/10 px-4 py-2.5 text-xs text-accent-dark">
+          <Icon name="ajustes" size={14} className="mt-0.5 shrink-0" />
+          <p>
+            Pasaron más de 24 h desde el último mensaje del contacto
+            {lastInboundAt && ` (${formatLeadCardDate(lastInboundAt)})`}. Meta bloquea el envío de texto libre fuera de
+            esa ventana — esperá a que te escriba de nuevo o usá una plantilla aprobada.
+          </p>
+        </div>
+      )}
       <Composer
         onSend={onSend}
         onSendMedia={onSendMedia}
         onSendAudio={onSendAudio}
-        disabled={sending || !conversation.id}
+        disabled={sending || !conversation.id || outsideSessionWindow}
         replyingTo={replyingTo}
         onCancelReply={() => setReplyingTo(null)}
       />
     </section>
   );
+}
+
+// LYD-54: "standard messaging window" de Meta -- misma regla en WhatsApp,
+// Messenger e Instagram (LYD-26).
+const SESSION_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+function findLastInboundAt(thread: InboxMessage[]): string | null {
+  for (let i = thread.length - 1; i >= 0; i--) {
+    if (thread[i].direction === "inbound") return thread[i].sentAt;
+  }
+  return null;
 }
 
 function groupByDay(thread: InboxMessage[]) {
