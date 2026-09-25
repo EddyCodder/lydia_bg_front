@@ -13,8 +13,15 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const page = Number(new URL(request.url).searchParams.get("page") ?? "1") || 1;
   try {
     const conversation = await getConversation(id);
-    const { messages, hasMore } = await listMessages(conversation.remoteJid, conversation.instanceName, page);
-    return NextResponse.json({ messages: messages.map(adaptMessage), hasMore });
+    const { messages, reactionsByMessageId, hasMore } = await listMessages(
+      conversation.remoteJid,
+      conversation.instanceName,
+      page,
+    );
+    return NextResponse.json({
+      messages: messages.map((m) => adaptMessage(m, reactionsByMessageId.get(m.key.id))),
+      hasMore,
+    });
   } catch (error) {
     return errorResponse(error);
   }
@@ -24,6 +31,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const { id } = await params;
   const body = await request.json().catch(() => null);
   const content = typeof body?.content === "string" ? body.content.trim() : "";
+  const quoted = body?.quoted ?? undefined;
 
   if (!content) {
     return NextResponse.json({ error: "content es requerido" }, { status: 400 });
@@ -31,7 +39,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   try {
     const conversation = await getConversation(id);
-    await sendMessage(conversation.remoteJid, conversation.instanceName, content);
+    await sendMessage(conversation.remoteJid, conversation.instanceName, content, quoted);
     return NextResponse.json({ ok: true });
   } catch (error) {
     return errorResponse(error);

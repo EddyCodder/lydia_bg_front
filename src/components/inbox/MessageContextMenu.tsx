@@ -1,0 +1,107 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { Icon } from "@/components/icons";
+import { useEscapeKey } from "@/lib/hooks/useEscapeKey";
+
+// LYD-52: mismos 6 emojis default de la reaccion rapida de WhatsApp.
+const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
+
+interface Props {
+  x: number;
+  y: number;
+  copyText: string;
+  onReact: (emoji: string) => void;
+  onReply: () => void;
+  onForward: () => void;
+  onClose: () => void;
+}
+
+// LYD-52: menu propio al hacer click derecho sobre un mensaje -- reemplaza
+// puntualmente el menu nativo del navegador solo ahi (ver el onContextMenu
+// que ChatThread.tsx sacaba de todo el panel). Posicionado en las coordenadas
+// del click, mismo patron de outside-click + Escape que ConversationRowMenu.
+export function MessageContextMenu({ x, y, copyText, onReact, onReply, onForward, onClose }: Props) {
+  const [copied, setCopied] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEscapeKey(true, onClose);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [onClose]);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(copyText);
+      setCopied(true);
+      setTimeout(onClose, 600);
+    } catch {
+      onClose();
+    }
+  };
+
+  return (
+    <div
+      ref={ref}
+      role="menu"
+      style={{ left: x, top: y }}
+      className="fixed z-30 w-52 rounded-lg border border-line bg-surface p-1.5 shadow-lg"
+    >
+      <div className="flex items-center justify-between gap-1 px-1 pb-1.5">
+        {QUICK_REACTIONS.map((emoji) => (
+          <button
+            key={emoji}
+            type="button"
+            onClick={() => {
+              onReact(emoji);
+              onClose();
+            }}
+            aria-label={`Reaccionar con ${emoji}`}
+            className="flex h-8 w-8 items-center justify-center rounded-full text-lg hover:bg-bg-subtle"
+          >
+            {emoji}
+          </button>
+        ))}
+      </div>
+      <div className="my-1 border-t border-line-soft" />
+      <button
+        type="button"
+        role="menuitem"
+        onClick={() => {
+          onReply();
+          onClose();
+        }}
+        className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm text-ink-soft hover:bg-bg-subtle"
+      >
+        <Icon name="responder" size={15} />
+        Responder
+      </button>
+      <button
+        type="button"
+        role="menuitem"
+        onClick={() => {
+          onForward();
+          onClose();
+        }}
+        className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm text-ink-soft hover:bg-bg-subtle"
+      >
+        <Icon name="reenviar" size={15} />
+        Reenviar
+      </button>
+      <button
+        type="button"
+        role="menuitem"
+        onClick={handleCopy}
+        className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm text-ink-soft hover:bg-bg-subtle"
+      >
+        <Icon name="copiar" size={15} />
+        {copied ? "Copiado" : "Copiar"}
+      </button>
+    </div>
+  );
+}

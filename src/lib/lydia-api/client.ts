@@ -13,12 +13,15 @@ import type {
   EvoNote,
   EvoPersonalInsights,
   EvoQuickReplyTemplate,
+  EvoQuoted,
   EvoSendMediaInput,
   EvoTemplateGroup,
   EvoBotFlow,
   EvoBotGraph,
   LeadStage,
 } from "./types";
+import { foldReactions } from "./adapters";
+import type { InboxMessageReaction } from "./inbox-types";
 
 /**
  * Cliente del backend de Lydia: Evolution API (lydia_bg_back) para
@@ -101,35 +104,62 @@ export async function getConversation(chatId: string): Promise<EvoConversation> 
 // LYD-17: page fijo en 1 perdia todo el historial mas alla de los ultimos
 // 100 mensajes, sin forma de pedir el resto.
 // LYD-31: instanceName ahora es de la conversacion puntual, no un global fijo.
+// LYD-52: reactionsByMessageId sale del fold de esta misma pagina -- si la
+// reaccion y el mensaje que reacciona cayeran en paginas distintas del
+// historial paginado (LYD-17), no se emparejan. No pasa en el caso normal
+// (poll de los ultimos 100, LYD-52 solo reacciona a lo reciente).
 export async function listMessages(
   remoteJid: string,
   instanceName: string,
   page = 1,
-): Promise<{ messages: EvoMessage[]; hasMore: boolean }> {
+): Promise<{ messages: EvoMessage[]; reactionsByMessageId: Map<string, InboxMessageReaction[]>; hasMore: boolean }> {
   const res = await evoFetch<EvoMessagesResponse>(`/chat/findMessages/${instanceName}`, {
     method: "POST",
     body: JSON.stringify({ where: { key: { remoteJid } }, offset: 100, page }),
   });
+  // orden ascendente para el hilo de chat (Evolution devuelve mas nuevo primero)
+  const ascending = [...res.messages.records].reverse();
+  const { records, reactionsByMessageId } = foldReactions(ascending);
   return {
-    // orden ascendente para el hilo de chat (Evolution devuelve mas nuevo primero)
-    messages: [...res.messages.records].reverse(),
+    messages: records,
+    reactionsByMessageId,
     hasMore: res.messages.currentPage < res.messages.pages,
   };
 }
 
-export async function sendMessage(remoteJid: string, instanceName: string, text: string): Promise<void> {
+export async function sendMessage(
+  remoteJid: string,
+  instanceName: string,
+  text: string,
+  quoted?: EvoQuoted,
+): Promise<void> {
   await evoFetch(`/message/sendText/${instanceName}`, {
     method: "POST",
-    body: JSON.stringify({ number: remoteJid, text }),
+    body: JSON.stringify({ number: remoteJid, text, quoted }),
   });
 }
 
 // LYD-15: envio de adjuntos (imagen/documento/video/audio). Evolution API
 // acepta la media como base64 inline en el body, sin necesidad de multipart.
-export async function sendMedia(remoteJid: string, instanceName: string, input: EvoSendMediaInput): Promise<void> {
+export async function sendMedia(
+  remoteJid: string,
+  instanceName: string,
+  input: EvoSendMediaInput,
+  quoted?: EvoQuoted,
+): Promise<void> {
   await evoFetch(`/message/sendMedia/${instanceName}`, {
     method: "POST",
-    body: JSON.stringify({ number: remoteJid, ...input }),
+    body: JSON.stringify({ number: remoteJid, ...input, quoted }),
+  });
+}
+
+// LYD-52: reaccion rapida con emoji sobre un mensaje puntual. `reaction: ""`
+// (no usado por el front todavia) es como WhatsApp representa "sacar la
+// reaccion" en sendReactionMessage.dto.ts del fork.
+export async function sendReaction(instanceName: string, key: unknown, reaction: string): Promise<void> {
+  await evoFetch(`/message/sendReaction/${instanceName}`, {
+    method: "POST",
+    body: JSON.stringify({ key, reaction }),
   });
 }
 

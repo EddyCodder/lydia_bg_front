@@ -35,6 +35,14 @@ export interface InboxMessageMedia {
   raw: { key: unknown; message: unknown };
 }
 
+// LYD-52: reaccion agregada sobre un mensaje. WhatsApp la manda como un
+// mensaje aparte (messageType reactionMessage) apuntando al key del original
+// -- el fold pasa en listMessages (client.ts), aca ya llega adjunta.
+export interface InboxMessageReaction {
+  emoji: string;
+  fromMe: boolean;
+}
+
 export interface InboxNote {
   id: string;
   content: string;
@@ -50,6 +58,13 @@ export interface InboxMessage {
   read: boolean;
   senderName?: string;
   media?: InboxMessageMedia;
+  // LYD-52: key + message crudo de Evolution API, para citar/reaccionar a
+  // este mensaje puntual (antes solo vivia dentro de `media`, para pedir el
+  // base64 -- ahora hace falta en todos, tengan adjunto o no).
+  raw: { key: unknown; message: unknown };
+  // LYD-52: snippet corto del mensaje citado, si este es una respuesta a otro.
+  quotedPreview: string | null;
+  reactions: InboxMessageReaction[];
 }
 
 export type InboxConversationStatus = "abierto" | "sin_respuesta" | "cerrado";

@@ -4,18 +4,35 @@ import { useMemo, useRef, useState } from "react";
 import { templateGroups as mockTemplateGroups } from "@/lib/mock-data";
 import { LYDIA_API_ENABLED } from "@/lib/lydia-api/config";
 import { useTemplateGroups } from "@/lib/queries/template-groups";
+import type { InboxMessage } from "@/lib/lydia-api/inbox-types";
+import { Icon } from "@/components/icons";
+
+// LYD-52: {key, message} crudo del mensaje citado -- lo que Evolution API
+// espera como `quoted` en sendText/sendMedia.
+export type ComposerQuoted = { key: unknown; message: unknown };
 
 export interface ComposerMediaInput {
   mediatype: "image" | "document" | "video" | "audio";
   media: string;
   mimetype?: string;
   fileName?: string;
+  quoted?: ComposerQuoted;
+}
+
+function replyPreviewText(message: InboxMessage): string {
+  if (message.text) return message.text;
+  if (message.media) return `[archivo adjunto${message.media.fileName ? `: ${message.media.fileName}` : ""}]`;
+  return "";
 }
 
 interface Props {
-  onSend: (text: string) => Promise<void>;
+  onSend: (text: string, quoted?: ComposerQuoted) => Promise<void>;
   onSendMedia: (input: ComposerMediaInput) => Promise<void>;
   disabled?: boolean;
+  // LYD-52: mensaje al que se esta respondiendo (elegido con "Responder" del
+  // menu contextual), null cuando el envio es normal.
+  replyingTo?: InboxMessage | null;
+  onCancelReply?: () => void;
 }
 
 function mediatypeFromMime(mimetype: string): ComposerMediaInput["mediatype"] {
@@ -37,7 +54,7 @@ function readFileAsBase64(file: File): Promise<string> {
   });
 }
 
-export function Composer({ onSend, onSendMedia, disabled = false }: Props) {
+export function Composer({ onSend, onSendMedia, disabled = false, replyingTo = null, onCancelReply }: Props) {
   const [value, setValue] = useState("");
   const [highlighted, setHighlighted] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -68,8 +85,9 @@ export function Composer({ onSend, onSendMedia, disabled = false }: Props) {
     setError(null);
     setIsSending(true);
     try {
-      await onSend(text);
+      await onSend(text, replyingTo ? replyingTo.raw : undefined);
       setValue("");
+      onCancelReply?.();
     } catch (e) {
       // LYD-14: antes esto borraba el texto igual y el mensaje se perdia en
       // silencio si el POST fallaba -- ahora se mantiene en el composer y
@@ -94,7 +112,9 @@ export function Composer({ onSend, onSendMedia, disabled = false }: Props) {
         media,
         mimetype: file.type || "application/octet-stream",
         fileName: file.name,
+        quoted: replyingTo ? replyingTo.raw : undefined,
       });
+      onCancelReply?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo enviar el archivo");
     } finally {
@@ -121,6 +141,21 @@ export function Composer({ onSend, onSendMedia, disabled = false }: Props) {
         </div>
       )}
       <div className="relative rounded-2xl border border-line bg-surface">
+        {replyingTo && (
+          <div className="flex items-center justify-between gap-2 rounded-t-2xl border-b border-line-soft bg-bg-subtle px-3 py-1.5">
+            <p className="min-w-0 truncate border-l-2 border-brand pl-2 text-xs italic text-ink-soft">
+              {replyPreviewText(replyingTo)}
+            </p>
+            <button
+              type="button"
+              onClick={onCancelReply}
+              aria-label="Cancelar respuesta"
+              className="shrink-0 text-muted hover:text-ink-soft"
+            >
+              <Icon name="equis" size={14} />
+            </button>
+          </div>
+        )}
         {isSlashMode && (
           <div className="scroll-slim absolute bottom-full left-0 z-10 mb-2 max-h-64 w-full overflow-y-auto rounded-lg border border-line bg-surface py-1 shadow-lg">
             {filtered.length === 0 && <p className="px-3 py-2 text-sm text-muted">Sin plantillas para &quot;{query}&quot;</p>}

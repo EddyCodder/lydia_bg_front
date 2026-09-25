@@ -16,13 +16,18 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   try {
     const conversation = await getConversation(id);
-    await sendMedia(conversation.remoteJid, conversation.instanceName, {
-      mediatype,
-      media,
-      mimetype: body.mimetype,
-      fileName: body.fileName,
-      caption: body.caption,
-    });
+    await sendMedia(
+      conversation.remoteJid,
+      conversation.instanceName,
+      {
+        mediatype,
+        media,
+        mimetype: body.mimetype,
+        fileName: body.fileName,
+        caption: body.caption,
+      },
+      body.quoted ?? undefined,
+    );
     return NextResponse.json({ ok: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Error desconocido";

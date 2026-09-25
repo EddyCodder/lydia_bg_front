@@ -58,6 +58,13 @@ export const ICON_PATHS = {
     "M14 11v6",
   ],
   salir: ["M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4", "M16 17l5-5-5-5", "M21 12H9"],
+  responder: ["M9 14 4 9l5-5", "M20 20v-7a4 4 0 0 0-4-4H4"],
+  reenviar: ["m15 14 5-5-5-5", "M4 20v-7a4 4 0 0 1 4-4h12"],
+  copiar: [
+    "M9 9h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V11a2 2 0 0 1 2-2z",
+    "M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1",
+  ],
+  equis: ["M18 6 6 18", "m6 6 12 12"],
 } as const;
 
 export type IconName = keyof typeof ICON_PATHS;

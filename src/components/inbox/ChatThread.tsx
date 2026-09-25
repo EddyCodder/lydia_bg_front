@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { InboxConversation, InboxMessage } from "@/lib/lydia-api/inbox-types";
 import { CHANNEL_META } from "@/lib/lydia-api/channel";
 import { formatMessageDay } from "@/lib/format";
 import { MessageBubble } from "./MessageBubble";
-import { Composer, type ComposerMediaInput } from "./Composer";
+import { Composer, type ComposerMediaInput, type ComposerQuoted } from "./Composer";
 import { EditContactMenu } from "./EditContactMenu";
 import { Icon } from "@/components/icons";
 
@@ -14,8 +14,10 @@ interface Props {
   thread: InboxMessage[];
   isLoading: boolean;
   error: Error | null;
-  onSend: (text: string) => Promise<void>;
+  onSend: (text: string, quoted?: ComposerQuoted) => Promise<void>;
   onSendMedia: (input: ComposerMediaInput) => Promise<void>;
+  onReact: (message: InboxMessage, emoji: string) => void;
+  onForward: (message: InboxMessage, targetConversationId: string) => void;
   sending: boolean;
   onEditContact: (name: string, phone: string) => void;
   onLoadOlder?: () => void;
@@ -31,6 +33,8 @@ export function ChatThread({
   error,
   onSend,
   onSendMedia,
+  onReact,
+  onForward,
   sending,
   onEditContact,
   onLoadOlder,
@@ -40,6 +44,16 @@ export function ChatThread({
 }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const lastMessageIdRef = useRef<string | null>(null);
+  // LYD-52: mensaje elegido con "Responder" del menu contextual -- vive aca
+  // (no en InboxView) porque es puramente UI del hilo. Se resetea al cambiar
+  // de conversacion con el mismo patron "ajustar estado durante el render"
+  // que ya usa InboxView.tsx para olderMessagesKey, no un efecto.
+  const [replyingTo, setReplyingTo] = useState<InboxMessage | null>(null);
+  const [replyingToKey, setReplyingToKey] = useState(conversation.id);
+  if (replyingToKey !== conversation.id) {
+    setReplyingToKey(conversation.id);
+    setReplyingTo(null);
+  }
 
   // LYD-17: solo baja el scroll cuando cambia el ULTIMO mensaje (llego uno
   // nuevo) -- si el efecto disparara con cualquier cambio de `thread`,
@@ -56,10 +70,7 @@ export function ChatThread({
   const groups = groupByDay(thread);
 
   return (
-    <section
-      className="flex h-full flex-1 flex-col bg-bg-subtle"
-      onContextMenu={(e) => e.preventDefault()}
-    >
+    <section className="flex h-full flex-1 flex-col bg-bg-subtle">
       <header className="flex items-center justify-between border-b border-line-soft bg-surface px-5 py-3">
         <div className="flex min-w-0 items-center gap-2">
           {onBack && (
@@ -108,7 +119,15 @@ export function ChatThread({
               </div>
               <div className="flex flex-col gap-3">
                 {group.messages.map((message) => (
-                  <MessageBubble key={message.id} message={message} instanceName={conversation.instanceName ?? ""} />
+                  <MessageBubble
+                    key={message.id}
+                    message={message}
+                    instanceName={conversation.instanceName ?? ""}
+                    conversationId={conversation.id}
+                    onReply={setReplyingTo}
+                    onReact={onReact}
+                    onForward={onForward}
+                  />
                 ))}
               </div>
             </div>
@@ -116,7 +135,13 @@ export function ChatThread({
         <div ref={bottomRef} />
       </div>
 
-      <Composer onSend={onSend} onSendMedia={onSendMedia} disabled={sending || !conversation.id} />
+      <Composer
+        onSend={onSend}
+        onSendMedia={onSendMedia}
+        disabled={sending || !conversation.id}
+        replyingTo={replyingTo}
+        onCancelReply={() => setReplyingTo(null)}
+      />
     </section>
   );
 }
