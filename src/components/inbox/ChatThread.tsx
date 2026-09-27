@@ -21,11 +21,21 @@ interface Props {
   onForward: (message: InboxMessage, targetConversationId: string) => void;
   sending: boolean;
   onEditContact: (name: string, phone: string) => void;
-  onLoadOlder?: () => void;
+  onLoadOlder?: () => void | Promise<void>;
   loadingOlder?: boolean;
   hasMoreOlder?: boolean;
   onBack?: () => void;
+  // LYD-60: mensaje a mostrar (resultado del buscador) -- scroll + resaltado.
+  focusMessageId?: string | null;
 }
+
+// LYD-60: tope de paginas de historial (100 mensajes c/u, LYD-17) que se
+// cargan solas buscando el mensaje elegido en el buscador, para no quedarse
+// pidiendo historial sin fin si el mensaje no aparece (ej. borrado).
+const MAX_AUTO_OLDER_PAGES = 20;
+const FOCUS_HIGHLIGHT_MS = 2500;
+// Literal completo para que Tailwind la genere (escanea el codigo fuente).
+const FOCUS_HIGHLIGHT_CLASS = "bg-accent/20";
 
 export function ChatThread({
   conversation,
@@ -43,8 +53,10 @@ export function ChatThread({
   loadingOlder = false,
   hasMoreOlder = false,
   onBack,
+  focusMessageId = null,
 }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const lastMessageIdRef = useRef<string | null>(null);
   // LYD-52: mensaje elegido con "Responder" del menu contextual -- vive aca
   // (no en InboxView) porque es puramente UI del hilo. Se resetea al cambiar
@@ -68,6 +80,63 @@ export function ChatThread({
       lastMessageIdRef.current = lastId;
     }
   }, [thread]);
+
+  // LYD-60: llevar el hilo hasta el mensaje elegido en el buscador. Va
+  // despues del efecto de arriba a proposito: al abrir el chat, primero baja
+  // al final y en el mismo commit este lo sube hasta el mensaje. Si el
+  // mensaje es mas viejo que lo cargado, pide paginas anteriores (LYD-17)
+  // hasta encontrarlo o llegar al tope. Se hace una sola vez por mensaje
+  // (focusedIdRef): el polling posterior no vuelve a mover el scroll.
+  const focusedIdRef = useRef<string | null>(null);
+  const autoPagesRef = useRef({ focusId: null as string | null, pages: 0 });
+  // En vuelo hasta que la promesa de onLoadOlder termina (y con ella el
+  // setState que agrega la pagina) -- loadingOlder solo no alcanza: puede
+  // pasar a false un render antes de que la pagina nueva este en `thread`,
+  // y se pediria la misma pagina dos veces.
+  const autoLoadInFlightRef = useRef(false);
+  const [autoLoadTick, setAutoLoadTick] = useState(0);
+  useEffect(() => {
+    if (!focusMessageId || focusedIdRef.current === focusMessageId || isLoading) return;
+
+    if (thread.some((m) => m.id === focusMessageId)) {
+      const el = scrollRef.current?.querySelector(`[data-message-id="${CSS.escape(focusMessageId)}"]`);
+      focusedIdRef.current = focusMessageId;
+      if (!el) return;
+      el.scrollIntoView({ block: "center" });
+      // Resaltado temporal directo en el DOM (no estado de React: seria un
+      // setState dentro del efecto solo para un flash visual). Sin cleanup a
+      // proposito: este efecto se re-ejecuta con cada poll/render y cortaria
+      // el resaltado al instante; si el nodo se desmonta antes, quitarle la
+      // clase a un nodo suelto no hace nada.
+      el.classList.add(FOCUS_HIGHLIGHT_CLASS);
+      setTimeout(() => el.classList.remove(FOCUS_HIGHLIGHT_CLASS), FOCUS_HIGHLIGHT_MS);
+      return;
+    }
+
+    if (autoPagesRef.current.focusId !== focusMessageId) {
+      autoPagesRef.current = { focusId: focusMessageId, pages: 0 };
+    }
+    if (
+      hasMoreOlder &&
+      !loadingOlder &&
+      !autoLoadInFlightRef.current &&
+      onLoadOlder &&
+      autoPagesRef.current.pages < MAX_AUTO_OLDER_PAGES
+    ) {
+      autoPagesRef.current.pages += 1;
+      autoLoadInFlightRef.current = true;
+      Promise.resolve(onLoadOlder())
+        .catch(() => {
+          // el boton "Cargar mensajes anteriores" sigue ahi para reintentar a mano
+        })
+        .finally(() => {
+          autoLoadInFlightRef.current = false;
+          // fuerza otra pasada del efecto aunque la pagina haya llegado a
+          // `thread` antes de este finally (ahi el efecto la salteo por "en vuelo")
+          setAutoLoadTick((t) => t + 1);
+        });
+    }
+  }, [focusMessageId, thread, isLoading, hasMoreOlder, loadingOlder, onLoadOlder, autoLoadTick]);
 
   // LYD-54: Meta rechaza texto libre si pasaron mas de 24h desde el ultimo
   // mensaje del contacto (solo deja plantillas pre-aprobadas fuera de esa
@@ -116,7 +185,7 @@ export function ChatThread({
         />
       </header>
 
-      <div className="scroll-slim flex-1 overflow-y-auto px-6 py-4">
+      <div ref={scrollRef} className="scroll-slim flex-1 overflow-y-auto px-6 py-4">
         {isLoading && <p className="text-center text-sm text-muted">Cargando mensajes…</p>}
         {error && <p className="text-center text-sm text-danger">No se pudieron cargar los mensajes: {error.message}</p>}
         {!isLoading && !error && hasMoreOlder && (
@@ -140,15 +209,20 @@ export function ChatThread({
               </div>
               <div className="flex flex-col gap-3">
                 {group.messages.map((message) => (
-                  <MessageBubble
+                  <div
                     key={message.id}
-                    message={message}
-                    instanceName={conversation.instanceName ?? ""}
-                    conversationId={conversation.id}
-                    onReply={setReplyingTo}
-                    onReact={onReact}
-                    onForward={onForward}
-                  />
+                    data-message-id={message.id}
+                    className="rounded-2xl transition-colors duration-700"
+                  >
+                    <MessageBubble
+                      message={message}
+                      instanceName={conversation.instanceName ?? ""}
+                      conversationId={conversation.id}
+                      onReply={setReplyingTo}
+                      onReact={onReact}
+                      onForward={onForward}
+                    />
+                  </div>
                 ))}
               </div>
             </div>

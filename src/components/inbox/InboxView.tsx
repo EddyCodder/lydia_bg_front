@@ -61,6 +61,9 @@ function BackendDownBanner({ error }: { error: Error }) {
 
 export function InboxView() {
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
+  // LYD-60: mensaje elegido desde la seccion "Mensajes" del buscador -- el
+  // hilo hace scroll hasta el y lo resalta. null = abrir el chat normal (abajo).
+  const [focusMessageId, setFocusMessageId] = useState<string | null>(null);
   // LYD-18: en mobile el inbox alterna entre lista y chat en vez de apilar
   // las tres columnas (lista + detalle + hilo) -- a partir de `md` siempre
   // se ven ambas y este estado no importa (las clases responsive lo tapan).
@@ -295,6 +298,14 @@ export function InboxView() {
             selectedConversationId={selectedConversationId}
             onSelect={(id) => {
               setSelectedConversationId(id);
+              setFocusMessageId(null);
+              setMobileView("thread");
+            }}
+            selectedMessageId={focusMessageId}
+            messageSearchEnabled={!isMockMode}
+            onSelectMessage={(conversationId, messageId) => {
+              setSelectedConversationId(conversationId);
+              setFocusMessageId(messageId);
               setMobileView("thread");
             }}
           />
@@ -321,6 +332,7 @@ export function InboxView() {
                 onLoadOlder={handleLoadOlder}
                 loadingOlder={loadOlderMessages.isPending}
                 hasMoreOlder={!isMockMode && hasMoreOlder && olderMessages.length + realMessages.length >= 100}
+                focusMessageId={focusMessageId}
                 onBack={() => setMobileView("list")}
               />
             </div>

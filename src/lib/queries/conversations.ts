@@ -1,7 +1,12 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { InboxAgent, InboxConversation, InboxMessage } from "@/lib/lydia-api/inbox-types";
+import type {
+  InboxAgent,
+  InboxConversation,
+  InboxMessage,
+  InboxMessageSearchHit,
+} from "@/lib/lydia-api/inbox-types";
 import { LYDIA_API_ENABLED } from "@/lib/lydia-api/config";
 
 // LYD-56: antes esto tiraba un Error generico con el status pegado dentro
@@ -36,6 +41,22 @@ export function useConversations(status: "open" | "resolved" | "all" = "all") {
     enabled: LYDIA_API_ENABLED,
     retry: false,
     refetchInterval: 15_000,
+  });
+}
+
+// LYD-60: busqueda en el texto de los mensajes (back, Postgres). `query` ya
+// llega con debounce desde ConversationList -- aca no se re-debouncea.
+// Sin polling: es una consulta puntual, no algo que tenga que seguir vivo.
+export function useMessageSearch(query: string) {
+  const q = query.trim();
+  return useQuery({
+    queryKey: ["message-search", q],
+    queryFn: () =>
+      fetchJson<{ messages: InboxMessageSearchHit[] }>(`/api/lydia/conversations/search?q=${encodeURIComponent(q)}`),
+    select: (data) => data.messages,
+    enabled: LYDIA_API_ENABLED && q.length >= 2,
+    retry: false,
+    staleTime: 30_000,
   });
 }
 

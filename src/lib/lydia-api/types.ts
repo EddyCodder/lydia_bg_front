@@ -56,6 +56,31 @@ export interface EvoConversation {
   integration: string;
 }
 
+// LYD-60: GET /crm/conversations/search?q= -- mensajes cuyo texto/caption
+// contiene q, con los datos del chat/contacto cruzados en el back y un
+// snippet ya recortado alrededor de la coincidencia.
+export interface EvoMessageSearchHit {
+  messageId: string;
+  timestamp: number; // epoch en segundos, igual que Message.messageTimestamp
+  fromMe: boolean;
+  pushName: string | null;
+  chatId: string;
+  remoteJid: string;
+  chatName: string | null;
+  contactNameOverride: string | null;
+  contactPhoneOverride: string | null;
+  instanceName: string;
+  integration: string;
+  contactPushName: string | null;
+  profilePicUrl: string | null;
+  snippet: string;
+}
+
+export interface EvoMessageSearchResponse {
+  query: string;
+  messages: EvoMessageSearchHit[];
+}
+
 // GET /instance/fetchInstances -- endpoint nativo de Evolution API, sin
 // tocar. Solo se usan estos campos; el resto (Chatwoot, Proxy, etc.) se
 // ignora en el front.

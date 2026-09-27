@@ -72,6 +72,19 @@ export interface InboxMessage {
   reactions: InboxMessageReaction[];
 }
 
+// LYD-60: resultado de la busqueda contextual dentro de los mensajes
+// (GET /crm/conversations/search del back), ya adaptado para la lista.
+export interface InboxMessageSearchHit {
+  messageId: string; // Message.id -- el mismo que InboxMessage.id en el hilo
+  conversationId: string; // Chat.id
+  contactName: string;
+  avatarUrl: string;
+  snippet: string;
+  sentAt: string; // ISO
+  fromMe: boolean;
+  inboxChannel: InboxChannel;
+}
+
 export type InboxConversationStatus = "abierto" | "sin_respuesta" | "cerrado";
 
 // LYD-31: los tres canales que hoy conecta lydia_bg_back (ver Integration en
