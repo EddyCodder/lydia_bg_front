@@ -9,6 +9,7 @@ import type {
   EvoLead,
   EvoMediaResult,
   EvoMessage,
+  EvoMessageSearchResponse,
   EvoMessagesResponse,
   EvoNote,
   EvoPersonalInsights,
@@ -89,6 +90,16 @@ export async function listConversations(status?: ChatStatus): Promise<EvoConvers
   if (status) query.set("status", status);
   const qs = query.toString();
   return evoFetch<EvoConversation[]>(`/crm/conversations${qs ? `?${qs}` : ""}`);
+}
+
+// LYD-60: busqueda contextual dentro de los mensajes de todas las
+// conversaciones (texto y caption de adjuntos), hecha en Postgres del lado
+// del back -- el front solo tiene cargados los ultimos 100 mensajes del chat
+// abierto, no podria buscar en el historial.
+export async function searchMessages(q: string, limit?: number): Promise<EvoMessageSearchResponse> {
+  const query = new URLSearchParams({ q });
+  if (limit) query.set("limit", String(limit));
+  return evoFetch<EvoMessageSearchResponse>(`/crm/conversations/search?${query.toString()}`);
 }
 
 // LYD-31: instancias/canales conectados (WhatsApp, Messenger, Instagram...),

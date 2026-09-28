@@ -4,6 +4,7 @@ import type {
   EvoConversation,
   EvoLead,
   EvoMessage,
+  EvoMessageSearchHit,
   EvoNote,
   EvoPersonalInsights,
   EvoTemplateGroup,
@@ -16,6 +17,7 @@ import type {
   InboxMessage,
   InboxMessageMedia,
   InboxMessageReaction,
+  InboxMessageSearchHit,
   InboxNote,
 } from "./inbox-types";
 import type { CalendarEvent, Lead, TemplateGroup } from "@/lib/types";
@@ -34,7 +36,15 @@ export function channelFromIntegration(integration: string): InboxConversation["
   return "whatsapp";
 }
 
-export function adaptContact(conversation: EvoConversation): InboxContact {
+// LYD-60: Pick en vez de EvoConversation entero para poder reusarlo con los
+// resultados de busqueda de mensajes (adaptMessageSearchHit), que traen los
+// mismos campos del chat/contacto pero no la conversacion completa.
+type ContactSource = Pick<
+  EvoConversation,
+  "contact" | "integration" | "remoteJid" | "contactNameOverride" | "contactPhoneOverride" | "name"
+>;
+
+export function adaptContact(conversation: ContactSource): InboxContact {
   const contact = conversation.contact;
   const channel = channelFromIntegration(conversation.integration);
   // LYD-31: el remoteJid de Messenger/Instagram es un id de usuario de Meta
@@ -228,6 +238,34 @@ export function adaptTemplateGroup(group: EvoTemplateGroup): TemplateGroup {
 // igual al que espera PersonalDashboard.tsx (ver LYD-11).
 export function adaptPersonalInsights(insights: EvoPersonalInsights): EvoPersonalInsights {
   return insights;
+}
+
+// LYD-60: mismo criterio de nombre/avatar que la lista de conversaciones
+// (adaptContact), asi el contacto se ve igual en "Contactos" y en "Mensajes".
+export function adaptMessageSearchHit(hit: EvoMessageSearchHit): InboxMessageSearchHit {
+  const contact = adaptContact({
+    contact: {
+      id: hit.remoteJid,
+      remoteJid: hit.remoteJid,
+      pushName: hit.contactPushName,
+      profilePicUrl: hit.profilePicUrl,
+    },
+    integration: hit.integration,
+    remoteJid: hit.remoteJid,
+    contactNameOverride: hit.contactNameOverride,
+    contactPhoneOverride: hit.contactPhoneOverride,
+    name: hit.chatName,
+  });
+  return {
+    messageId: hit.messageId,
+    conversationId: hit.chatId,
+    contactName: contact.name,
+    avatarUrl: contact.avatarUrl,
+    snippet: hit.snippet,
+    sentAt: new Date(hit.timestamp * 1000).toISOString(),
+    fromMe: hit.fromMe,
+    inboxChannel: channelFromIntegration(hit.integration),
+  };
 }
 
 export function adaptConversation(conversation: EvoConversation): InboxConversation {
