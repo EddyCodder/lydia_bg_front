@@ -53,11 +53,7 @@ export function MessageBubble({ message, instanceName, conversationId, onReply, 
   return (
     <div className={`flex ${isOutbound ? "justify-end" : "justify-start"}`}>
       <div className="flex max-w-md flex-col gap-1">
-        {isOutbound && message.senderName && (
-          <span className="self-end text-xs text-muted">
-            {formatMessageTime(message.sentAt)} · {message.senderName}
-          </span>
-        )}
+        {isOutbound && message.senderName && <span className="self-end text-xs text-muted">{message.senderName}</span>}
         <div className="relative pb-2" onContextMenu={handleContextMenu}>
           <div
             className={`rounded-2xl text-sm leading-relaxed ${
@@ -92,7 +88,9 @@ export function MessageBubble({ message, instanceName, conversationId, onReply, 
           )}
         </div>
         <div className={`flex items-center gap-1 text-xs text-muted ${isOutbound ? "justify-end" : ""}`}>
-          {!isOutbound && <span>{formatMessageTime(message.sentAt)}</span>}
+          {/* LYD-61: la hora va en el pie de todos los mensajes, tambien los
+              salientes sin senderName (enviados desde el telefono, etc.) */}
+          <span>{formatMessageTime(message.sentAt)}</span>
           {isOutbound && message.read && (
             <span className="flex items-center gap-0.5 text-brand">
               Leído
