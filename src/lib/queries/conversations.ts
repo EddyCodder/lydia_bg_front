@@ -178,6 +178,9 @@ export function useDeleteConversation() {
       fetchJson<void>(`/api/lydia/conversations/${conversationId}`, { method: "DELETE" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      // LYD-63: borrar la conversacion tambien borra su lead y los eventos de calendario.
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+      queryClient.invalidateQueries({ queryKey: ["calendarEvents"] });
     },
   });
 }
