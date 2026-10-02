@@ -337,13 +337,12 @@ export function useForwardMessage() {
 
 // LYD-15: resuelve el base64 de un mensaje de media bajo demanda -- se
 // cachea por messageId asi MessageBubble no vuelve a pedirlo en cada re-render.
-export function useResolveMedia(
+function mediaQueryOptions(
   messageId: string,
   raw: { key: unknown; message: unknown; messageType: string },
   instanceName: string,
-  enabled: boolean,
 ) {
-  return useQuery({
+  return {
     queryKey: ["media", messageId],
     queryFn: () =>
       fetchJson<{ dataUrl: string }>(`/api/lydia/media`, {
@@ -351,9 +350,31 @@ export function useResolveMedia(
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...raw, instanceName }),
       }),
-    select: (data) => data.dataUrl,
-    enabled,
     retry: false,
     staleTime: Infinity,
+  };
+}
+
+export function useResolveMedia(
+  messageId: string,
+  raw: { key: unknown; message: unknown; messageType: string },
+  instanceName: string,
+  enabled: boolean,
+) {
+  return useQuery({
+    ...mediaQueryOptions(messageId, raw, instanceName),
+    select: (data) => data.dataUrl,
+    enabled,
   });
+}
+
+// LYD-64: mismo cache que useResolveMedia -- si el bubble ya pinto la
+// imagen/video sale de ahi sin otro viaje a Evolution API; si es un
+// documento que todavia no se cargo, lo pide en el momento de descargar.
+export function useFetchMediaDataUrl() {
+  const queryClient = useQueryClient();
+  return async (messageId: string, raw: { key: unknown; message: unknown; messageType: string }, instanceName: string) => {
+    const data = await queryClient.fetchQuery(mediaQueryOptions(messageId, raw, instanceName));
+    return data.dataUrl;
+  };
 }

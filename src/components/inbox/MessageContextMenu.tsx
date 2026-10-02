@@ -17,6 +17,9 @@ interface Props {
   onReact: (emoji: string) => void;
   onReply: () => void;
   onForward: () => void;
+  // LYD-64: solo viene cuando el mensaje trae adjunto (foto, video, audio,
+  // documento) -- sin eso no se muestra la opcion.
+  onDownload?: () => Promise<void>;
   onClose: () => void;
 }
 
@@ -24,8 +27,19 @@ interface Props {
 // puntualmente el menu nativo del navegador solo ahi (ver el onContextMenu
 // que ChatThread.tsx sacaba de todo el panel). Posicionado en las coordenadas
 // del click, mismo patron de outside-click + Escape que ConversationRowMenu.
-export function MessageContextMenu({ x, y, copyText, activeEmoji, onReact, onReply, onForward, onClose }: Props) {
+export function MessageContextMenu({
+  x,
+  y,
+  copyText,
+  activeEmoji,
+  onReact,
+  onReply,
+  onForward,
+  onDownload,
+  onClose,
+}: Props) {
   const [copied, setCopied] = useState(false);
+  const [downloadState, setDownloadState] = useState<"idle" | "loading" | "error">("idle");
   const ref = useRef<HTMLDivElement>(null);
 
   useEscapeKey(true, onClose);
@@ -45,6 +59,17 @@ export function MessageContextMenu({ x, y, copyText, activeEmoji, onReact, onRep
       setTimeout(onClose, 600);
     } catch {
       onClose();
+    }
+  };
+
+  const handleDownload = async () => {
+    if (!onDownload) return;
+    setDownloadState("loading");
+    try {
+      await onDownload();
+      onClose();
+    } catch {
+      setDownloadState("error");
     }
   };
 
@@ -109,6 +134,24 @@ export function MessageContextMenu({ x, y, copyText, activeEmoji, onReact, onRep
         <Icon name="copiar" size={15} />
         {copied ? "Copiado" : "Copiar"}
       </button>
+      {onDownload && (
+        <button
+          type="button"
+          role="menuitem"
+          onClick={handleDownload}
+          disabled={downloadState === "loading"}
+          className={`flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm hover:bg-bg-subtle disabled:cursor-wait ${
+            downloadState === "error" ? "text-danger" : "text-ink-soft"
+          }`}
+        >
+          <Icon name="descargar" size={15} />
+          {downloadState === "loading"
+            ? "Descargando…"
+            : downloadState === "error"
+              ? "No se pudo descargar"
+              : "Descargar"}
+        </button>
+      )}
     </div>
   );
 }
