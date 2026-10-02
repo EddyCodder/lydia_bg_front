@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import type { InboxMessage } from "@/lib/lydia-api/inbox-types";
+import type { InboxMessage, InboxMessageMedia } from "@/lib/lydia-api/inbox-types";
 import { formatMessageTime } from "@/lib/format";
+import { useFetchMediaDataUrl } from "@/lib/queries/conversations";
 import { MessageMedia } from "./MessageMedia";
 import { MessageContextMenu } from "./MessageContextMenu";
 import { ForwardMessageDialog } from "./ForwardMessageDialog";
@@ -20,7 +21,7 @@ interface Props {
 // (se abre en las coordenadas del click, y ese click puede caer cerca del
 // borde derecho/inferior del panel de chat).
 const MENU_WIDTH = 220;
-const MENU_HEIGHT = 260;
+const MENU_HEIGHT = 300;
 
 function copyableText(message: InboxMessage): string {
   if (message.text) return message.text;
@@ -28,9 +29,43 @@ function copyableText(message: InboxMessage): string {
   return "";
 }
 
+// LYD-64: extension para el nombre del archivo descargado cuando WhatsApp no
+// manda fileName (fotos, videos, audios y stickers casi nunca lo traen).
+const EXTENSION_BY_SUBTYPE: Record<string, string> = { jpeg: "jpg", quicktime: "mov", mpeg: "mp3", "svg+xml": "svg" };
+const FALLBACK_NAME: Record<InboxMessageMedia["kind"], string> = {
+  image: "imagen",
+  sticker: "sticker",
+  video: "video",
+  audio: "audio",
+  document: "documento",
+};
+
+function downloadFileName(media: InboxMessageMedia, sentAt: string): string {
+  if (media.fileName) return media.fileName;
+  const subtype = media.mimetype?.split(";")[0].trim().split("/")[1];
+  const ext = subtype ? `.${EXTENSION_BY_SUBTYPE[subtype] ?? subtype}` : "";
+  const stamp = sentAt.replace(/[^0-9]/g, "").slice(0, 14);
+  return `${FALLBACK_NAME[media.kind]}-${stamp}${ext}`;
+}
+
+// Se pasa el data: URI a Blob antes de descargar: un <a download> con un
+// data: URI de varios MB (videos, PDFs) falla en algunos navegadores.
+async function triggerDownload(dataUrl: string, fileName: string) {
+  const blob = await (await fetch(dataUrl)).blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 export function MessageBubble({ message, instanceName, conversationId, onReply, onReact, onForward }: Props) {
   const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null);
   const [showForward, setShowForward] = useState(false);
+  const fetchMediaDataUrl = useFetchMediaDataUrl();
 
   if (message.direction === "system") {
     return (
@@ -42,6 +77,14 @@ export function MessageBubble({ message, instanceName, conversationId, onReply, 
 
   const isOutbound = message.direction === "outbound";
   const myReaction = message.reactions.find((r) => r.fromMe)?.emoji ?? null;
+
+  const media = message.media;
+  const handleDownload = media
+    ? async () => {
+        const dataUrl = await fetchMediaDataUrl(message.id, media.raw, instanceName);
+        await triggerDownload(dataUrl, downloadFileName(media, message.sentAt));
+      }
+    : undefined;
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -112,6 +155,7 @@ export function MessageBubble({ message, instanceName, conversationId, onReply, 
           onReply={() => onReply(message)}
           onReact={(emoji) => onReact(message, emoji)}
           onForward={() => setShowForward(true)}
+          onDownload={handleDownload}
           onClose={() => setMenuPos(null)}
         />
       )}
